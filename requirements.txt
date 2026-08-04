@@ -1,0 +1,8 @@
+# HTTP请求
+requests==2.32.3
+
+# 环境变量读取
+python-dotenv==1.0.0
+
+# 编码检测
+chardet==5.2.0
