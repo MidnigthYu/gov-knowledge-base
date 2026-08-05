@@ -1,23 +1,18 @@
 import logging
-from pathlib import Path
-from logging.handlers import RotatingFileHandler
+import os
+from logging.handlers import TimedRotatingFileHandler
+from config.settings import settings
 
-# 日志存放目录
-LOG_DIR = Path(__file__).resolve().parent.parent / "logs"
-LOG_DIR.mkdir(exist_ok=True)
-LOG_FILE = LOG_DIR / "app.log"
-
-
-def get_logger(name: str = "app") -> logging.Logger:
-    """获取统一配置的日志实例"""
+def get_logger(name: str) -> logging.Logger:
+    """获取配置好的日志器，首次调用时创建日志目录"""
     logger = logging.getLogger(name)
-    logger.setLevel(logging.INFO)
-
-    # 避免重复添加处理器
-    if logger.handlers:
+    if logger.handlers:  # 避免重复添加处理器
         return logger
 
-    # 日志格式
+    # 首次调用才创建日志目录
+    os.makedirs(settings.LOG_DIR, exist_ok=True)
+
+    logger.setLevel(settings.LOG_LEVEL)
     formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
@@ -27,9 +22,12 @@ def get_logger(name: str = "app") -> logging.Logger:
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
 
-    # 文件输出，按大小滚动，最多保留5个备份
-    file_handler = RotatingFileHandler(
-        LOG_FILE, maxBytes=5*1024*1024, backupCount=5, encoding="utf-8"
+    # 文件滚动输出
+    file_handler = TimedRotatingFileHandler(
+        os.path.join(settings.LOG_DIR, "app.log"),
+        when="midnight",
+        backupCount=7,
+        encoding="utf-8"
     )
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)

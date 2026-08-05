@@ -1,24 +1,41 @@
 import os
 from dotenv import load_dotenv
-
-# 加载根目录的 .env 文件
-load_dotenv()
-
+from common.exceptions import ConfigError
 
 class Settings:
-    """项目全局配置"""
-    # 智谱AI配置
-    ZHIPU_API_KEY = os.getenv("ZHIPU_API_KEY", "")
-    ZHIPU_BASE_URL = os.getenv("ZHIPU_BASE_URL", "https://open.bigmodel.cn/api/paas/v4/chat/completions")
+    """项目统一配置管理类"""
 
-    # DeepSeek配置
-    DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
-    DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/chat/completions")
+    def __init__(self, env_file: str = ".env"):
 
-    # 默认模型名称
-    DEFAULT_ZHIPU_MODEL = "glm-4-flash"
-    DEFAULT_DEEPSEEK_MODEL = "deepseek-chat"
+        load_dotenv(env_file, override=False)
+
+        # 大模型配置
+        self.ZHIPU_API_KEY = os.getenv("ZHIPU_API_KEY", "")
+        self.ZHIPU_BASE_URL = os.getenv("ZHIPU_BASE_URL", 
+        "https://open.bigmodel.cn/api/paas/v4/chat/completions")
+
+        self.DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
+        self.DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", 
+        "https://api.deepseek.com/chat/completions")
+
+        # 日志配置
+        self.LOG_DIR = os.getenv("LOG_DIR", "logs")
+        self.LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+
+        # 启动时执行必填项校验
+        self._validate_required()
+
+    def _validate_required(self):
+        """校验必填配置项，缺失立即报错"""
+        missing = []
+        if not self.ZHIPU_API_KEY:
+            missing.append("ZHIPU_API_KEY")
+        if not self.DEEPSEEK_API_KEY:
+            missing.append("DEEPSEEK_API_KEY")
+
+        if missing:
+            raise ConfigError(f"缺失必填配置项: {', '.join(missing)}，请检查 .env 文件")
 
 
-# 全局单例，直接导入使用
+# 全局单例
 settings = Settings()
