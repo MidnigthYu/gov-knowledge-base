@@ -6,7 +6,6 @@ from common.logger import get_logger
 
 logger = get_logger("text_cleaner")
 
-# 全局配置常量
 SUPPORTED_EXTENSIONS = {".txt"}
 DETECT_SAMPLE_BYTES = 1024
 CONFIDENCE_THRESHOLD = 0.7
@@ -56,6 +55,9 @@ def clean_single_text(raw_text: str) -> str:
     政务场景文本清洗
     包含去空行、首尾去空白、规范连续空格、白名单过滤特殊字符
     """
+    if raw_text is None or not isinstance(raw_text, str):
+        return ""
+
     lines = raw_text.splitlines()
     clean_lines = []
 
@@ -89,7 +91,7 @@ def batch_clean_files(input_dir: str | Path, output_dir: str | Path) -> None:
 
     if not input_path.is_dir():
         logger.error(f"输入目录不存在，任务终止: {input_path}")
-        return
+        return 0,0
     
     output_path.mkdir(parents=True, exist_ok=True)
 
@@ -102,7 +104,7 @@ def batch_clean_files(input_dir: str | Path, output_dir: str | Path) -> None:
 
     if total == 0:
         logger.warning("未找到可处理的文件，任务结束")
-        return
+        return 0,0
 
     success_count = 0
     fail_count = 0
@@ -134,3 +136,4 @@ def batch_clean_files(input_dir: str | Path, output_dir: str | Path) -> None:
             continue
 
     logger.info(f"批量处理结束：成功 {success_count} 个，失败 {fail_count} 个")
+    return success_count, fail_count
