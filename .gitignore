@@ -29,3 +29,6 @@ tmp/
 data/**/*.txt
 data/**/*.pdf
 data/**/*.docx
+
+# 单元测试配套数据文件
+tests/test_files/
