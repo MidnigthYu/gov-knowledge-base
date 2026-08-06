@@ -32,3 +32,7 @@ data/**/*.docx
 
 # 单元测试配套数据文件
 tests/test_files/
+
+# 向量库持久化数据
+data/
+*.chroma/

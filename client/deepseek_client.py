@@ -5,7 +5,7 @@ class DeepSeekClient(BaseLLMClient):
     def __init__(self):
         super().__init__(
             api_key=settings.DEEPSEEK_API_KEY,
-            base_url=settings.DEEPSEEK_BASE_URL,
+            base_url=f"{settings.DEEPSEEK_BASE_URL.rstrip('/')}/chat/completions",
             model="deepseek-chat"
         )
 

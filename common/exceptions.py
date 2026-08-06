@@ -20,3 +20,7 @@ class FileProcessError(GovRAGBaseError):
 class VectorStoreError(GovRAGBaseError):
     """向量数据库操作异常"""
     pass
+
+class EmbeddingError(GovRAGBaseError):
+    """嵌入模型调用与处理异常"""
+    pass
