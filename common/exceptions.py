@@ -3,6 +3,10 @@ class GovRAGBaseError(Exception):
     """项目基础异常类，所有业务异常的父类"""
     pass
 
+class LLMError(GovRAGBaseError):
+    """大模型相关异常基类"""
+    pass
+
 class LLMAPIError(GovRAGBaseError):
     """大模型接口调用异常"""
     def __init__(self, message: str, status_code: int = None):

@@ -32,8 +32,11 @@ class Settings:
         # 向量库配置
         self.CHROMA_PERSIST_DIR: str = os.getenv( "CHROMA_PERSIST_DIR","./data/chroma")
         self.CHROMA_DEFAULT_COLLECTION: str = os.getenv("CHROMA_DEFAULT_COLLECTION","gov_policy_base")
-        self.VECTOR_DEFAULT_TOP_K: int = os.getenv("VECTOR_DEFAULT_TOP_K", "5")
-        
+        self.VECTOR_DEFAULT_TOP_K: int = int (os.getenv("VECTOR_DEFAULT_TOP_K", "5"))
+
+        # RAG配置
+        self.RAG_DEFAULT_TOP_K: int = int (os.getenv("RAG_DEFAULT_TOP_K", "3"))
+
         # 启动时执行必填项校验
         self._validate_required()
 

@@ -32,7 +32,6 @@ class BaseEmbeddingClient(ABC):
         """批量文本向量化（统一校验+分批处理）"""
         if not texts or not all(isinstance(t, str) for t in texts):
             raise EmbeddingError("批量向量化入参必须为非空字符串列表")
-        # 修复：原逻辑 t in t.strip() 错误，改为判断清洗后非空
         clean_texts = [t.strip() for t in texts if t.strip()]
         if not clean_texts:
             raise EmbeddingError("批量文本全部为空")
@@ -50,7 +49,6 @@ class BaseEmbeddingClient(ABC):
         pass
 
     @abstractmethod
-    # 修复：参数名 rexts 拼写错误，改为 texts
     def _embed_batch_impl(self, texts: List[str]) -> List[List[float]]:
         """子类实现：批量向量化具体逻辑"""
         pass
