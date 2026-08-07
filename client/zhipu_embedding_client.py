@@ -17,6 +17,14 @@ class ZhipuEmbeddingClient(BaseEmbeddingClient):
         self.batch_max = settings.EMBEDDING_BATCH_MAX
         self.timeout = settings.LLM_REQUEST_TIMEOUT
 
+    def embed(self, text: str) -> list[float]:
+        """单文本向量化，对外统一接口"""
+        return self._embed_single_impl(text)
+
+    def batch_embed(self, texts: list[str]) -> list[list[float]]:
+        """批量文本向量化，对外统一接口"""
+        return self._embed_batch_impl(texts)
+
     def _embed_single_impl(self, text: str) -> List[float]:
         url = f"{self.base_url}/embeddings"
         headers = {
