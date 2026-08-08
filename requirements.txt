@@ -6,3 +6,13 @@ python-dotenv==1.0.0
 
 # 编码检测
 chardet==5.2.0
+
+# 向量数据库
+chromadb==1.5.9
+
+# # API服务框架
+fastapi==0.141.1
+uvicorn==0.52.1
+
+# 数据校验
+pydantic==2.13.4
