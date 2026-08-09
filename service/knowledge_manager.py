@@ -1,6 +1,6 @@
 import os
 from common.logger import get_logger
-from common.exceptions import EmbeddingError, VectorStoreError
+from common.exceptions import EmbeddingError, VectorStoreError, KnowledgeNotFoundException, DocumentParseException
 from utils.text_cleaner import safe_read_file, clean_single_text
 from utils.text_splitter import TextSplitter
 
@@ -17,6 +17,7 @@ class KnowledgeManager:
         self.embedding_client = embedding_client
         self.vector_store = vector_store
         self.splitter = TextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+        self.default_collection = vector_store.collection_name
 
     def build_from_dir(self, input_dir: str) -> dict:
         """从指定目录递归扫描所有 TXT 文件，批量构建知识库"""
@@ -58,7 +59,6 @@ class KnowledgeManager:
                     success_count += 1
                     continue
 
-                # 构造每个分块的元数据（强制非空，规避 Chroma 校验错误）
                 file_rel_path = os.path.relpath(file_path, input_dir)
                 for chunk in chunks:
                     all_texts.append(chunk["content"])
@@ -102,3 +102,74 @@ class KnowledgeManager:
         }
         logger.info(f"知识库构建任务结束：{result}")
         return result
+
+    def list_knowledge_bases(self) -> list[str]:
+        """获取所有知识库集合名称列表"""
+        return self.vector_store.list_collections()
+
+    def delete_knowledge_base(self, collection_name: str) -> None:
+        """删除指定知识库集合"""
+        all_collections = self.list_knowledge_bases()
+        if collection_name not in all_collections:
+            raise KnowledgeNotFoundException(f"知识库「{collection_name}」不存在")
+
+        self.vector_store.delete_collection(collection_name)
+        logger.info(f"知识库「{collection_name}」删除成功")
+
+    def add_single_document(self, file_path: str, collection_name: str = None) -> int:
+        """单文档增量入库，处理逻辑与批量构建完全对齐"""
+        target_collection = collection_name or self.default_collection
+
+        try:
+            # 文档读取 + 文本清洗
+            raw_text = safe_read_file(file_path)
+            clean_text = clean_single_text(raw_text)
+
+            # 空内容前置校验
+            if not clean_text.strip():
+                logger.warning(f"文档 {file_path} 内容为空，跳过入库")
+                return 0
+
+            # 文本分块
+            chunk_dicts = self.splitter.split(clean_text)
+            if not chunk_dicts:
+                logger.warning(f"文档 {file_path} 分块后无有效内容，跳过入库")
+                return 0
+
+            # 提取纯文本与元数据，格式与批量构建完全统一
+            all_texts = []
+            all_metadatas = []
+            for chunk in chunk_dicts:
+                chunk_content = chunk.get("content", "")
+                if not chunk_content.strip():
+                    continue
+                all_texts.append(chunk_content)
+                all_metadatas.append({
+                    "source_file": file_path,
+                    "chunk_index": chunk.get("chunk_index", 0),
+                    "start_pos": chunk.get("start_pos", 0)
+                })
+
+            if not all_texts:
+                return 0
+
+        except Exception as e:
+            raise DocumentParseException(f"文档解析失败: {str(e)}") from e
+
+        try:
+            # 批量向量化
+            embeddings = self.embedding_client.batch_embed(all_texts)
+
+            # 写入目标向量库
+            self.vector_store.add_documents(
+                texts=all_texts,
+                embeddings=embeddings,
+                metadatas=all_metadatas,
+                collection_name=target_collection
+            )
+        except Exception as e:
+            logger.error(f"文档入库失败: {str(e)}")
+            raise
+
+        logger.info(f"文档 {file_path} 入库完成，新增 {len(all_texts)} 个分块")
+        return len(all_texts)
