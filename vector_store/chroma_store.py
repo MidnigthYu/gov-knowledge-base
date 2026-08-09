@@ -45,17 +45,24 @@ class ChromaVectorStore(BaseVectorStore):
         texts: List[str],
         embeddings: List[List[float]],
         metadatas: List[Dict] = None,
-        ids: List[str] = None
+        ids: List[str] = None,
+        collection_name: str = None  # 可选目标集合名称
     ) -> None:
         if not texts or not embeddings:
             raise VectorStoreError("文本和向量不能为空")
         if len(texts) != len(embeddings):
             raise VectorStoreError("文本数量与向量数量不一致")
 
+        # 动态获取目标集合
+        if collection_name and collection_name != self.collection_name:
+            target_collection = self.client.get_or_create_collection(collection_name)
+        else:
+            target_collection = self.collection
+
         try:
             doc_ids = ids or [str(uuid.uuid4()) for _ in texts]
             meta = metadatas if metadatas else None
-            self.collection.add(
+            target_collection.add(
                 ids=doc_ids,
                 documents=texts,
                 embeddings=embeddings,
@@ -83,7 +90,7 @@ class ChromaVectorStore(BaseVectorStore):
                 n_results=top_k,
                 include=["documents", "metadatas", "distances"]
             )
-            # 格式化返回，distance转相似度（余弦距离越小越相似）
+            # 格式化返回，distance转相似度
             items = []
             for doc, meta, dist in zip(
                 result["documents"][0],
@@ -101,13 +108,20 @@ class ChromaVectorStore(BaseVectorStore):
             logger.error(f"向量检索失败: {str(e)}")
             raise VectorStoreError(f"检索失败: {str(e)}") from e
 
-    def delete_collection(self) -> None:
+    def delete_collection(self, collection_name: str = None) -> None:
+        """删除知识库集合，不传参则删除当前默认集合"""
+        target = collection_name or self.collection_name
         try:
-            self.client.delete_collection(self.collection_name)
-            logger.info(f"集合 {self.collection_name} 已删除")
+            self.client.delete_collection(target)
+            logger.info(f"集合 {target} 已删除")
         except Exception as e:
             logger.error(f"删除集合失败: {str(e)}")
             raise VectorStoreError(f"删除集合失败: {str(e)}") from e
+
+    def list_collections(self) -> list[str]:
+        """获取所有知识库集合名称"""
+        collections = self.client.list_collections()
+        return [col.name for col in collections]
 
     def count(self) -> int:
         try:
