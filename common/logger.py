@@ -9,7 +9,6 @@ def get_logger(name: str) -> logging.Logger:
     if logger.handlers:  # 避免重复添加处理器
         return logger
 
-    # 首次调用才创建日志目录
     os.makedirs(settings.LOG_DIR, exist_ok=True)
 
     logger.setLevel(settings.LOG_LEVEL)
