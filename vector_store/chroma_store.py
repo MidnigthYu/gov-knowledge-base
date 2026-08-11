@@ -74,23 +74,33 @@ class ChromaVectorStore(BaseVectorStore):
             raise VectorStoreError(f"文档入库失败: {str(e)}") from e
 
     def search(
-        self,
+    self,
         query_embedding: List[float],
-        top_k: int = 5
+        top_k: int = 5,
+        collection_name: str = None
     ) -> List[Dict]:
         if not query_embedding:
             raise VectorStoreError("查询向量不能为空")
-        top_k = min(top_k, self.count())
+
+        # 动态获取目标集合
+        if collection_name and collection_name != self.collection_name:
+            target_collection = self.client.get_or_create_collection(collection_name)
+        else:
+            target_collection = self.collection
+
+        # 文档数量做边界校验
+        top_k = min(top_k, target_collection.count())
         if top_k <= 0:
             return []
 
         try:
-            result = self.collection.query(
+            result = target_collection.query(
                 query_embeddings=[query_embedding],
                 n_results=top_k,
                 include=["documents", "metadatas", "distances"]
             )
-            # 格式化返回，distance转相似度
+
+            # 格式化返回
             items = []
             for doc, meta, dist in zip(
                 result["documents"][0],
@@ -102,8 +112,10 @@ class ChromaVectorStore(BaseVectorStore):
                     "metadata": meta,
                     "similarity": round(1 - dist, 4)
                 })
+
             # 按相似度降序
             return sorted(items, key=lambda x: x["similarity"], reverse=True)
+
         except Exception as e:
             logger.error(f"向量检索失败: {str(e)}")
             raise VectorStoreError(f"检索失败: {str(e)}") from e

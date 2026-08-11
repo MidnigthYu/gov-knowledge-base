@@ -169,7 +169,7 @@ class KnowledgeManager:
                 texts=all_texts,
                 embeddings=embeddings,
                 metadatas=all_metadatas,
-                collection_name=target_collection
+                collection_name=collection_name
             )
         except Exception as e:
             logger.error(f"文档入库失败: {str(e)}")

@@ -17,7 +17,7 @@ class RagService:
         self.embedding_client = embedding_client
         self.top_k = top_k if top_k is not None else settings.RAG_DEFAULT_TOP_K
 
-        # 政务场景专属系统提示词：严谨、溯源、不编造
+        # 政务场景专属系统提示词
         self.system_prompt_template = """你是专业的政务政策咨询助手，请严格遵守以下规则：
 1. 所有回答必须严格基于下方提供的【参考内容】，不得编造、引申任何政策信息
 2. 如果参考内容中没有相关信息，请明确回复："抱歉，暂无与该问题相关的政策信息"
@@ -27,9 +27,9 @@ class RagService:
 【参考内容】
 {context}
 """
-
     def query(self, user_question: str, top_k: int = None,
-          similarity_threshold: float = 0.0, return_sources: bool = True) -> dict:
+          similarity_threshold: float = 0.0, return_sources: bool = True,
+          collection_name: str = None) -> dict:
         """执行一次RAG问答"""
         # 将用户问题转为查询向量
         try:
@@ -38,15 +38,16 @@ class RagService:
             logger.error(f"查询文本向量化失败: {str(e)}")
             raise EmbeddingError(f"向量化失败: {str(e)}") from e
 
-        # 执行向量相似度检索，优先级：传入参数 > 实例默认值
+        # 执行向量相似度检索
         actual_top_k = top_k if top_k is not None else self.top_k
         try:
             search_results = self.vector_store.search(
                 query_embedding=query_embedding,
-                top_k=actual_top_k
+                top_k=actual_top_k,
+                collection_name=collection_name
             )
         except Exception as e:
-            logger.error(f"向量检索执行失败，问题: {user_question}，错误: {str(e)}")
+            logger.error(f"向量检索执行失败, 问题: {user_question}, 错误: {str(e)}")
             raise VectorStoreError(f"检索失败: {str(e)}") from e
 
         # 按相似度阈值过滤结果
@@ -60,8 +61,8 @@ class RagService:
             return {
                 "answer": "抱歉，暂无与该问题相关的政策信息。",
                 "sources": [],
-                "hit_count": 0
-            }
+            "hit_count": 0
+        }
 
         # 拼接参考上下文
         context_blocks = []
