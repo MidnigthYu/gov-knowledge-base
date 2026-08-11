@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -84,6 +84,25 @@ async def handle_business_exception(request: Request, exc: GovRAGBaseError):
             "data": None
         }
     )
+
+@app.exception_handler(StarletteHTTPException)
+async def handle_http_exception(request: Request, exc: StarletteHTTPException):
+    """统一处理 Starlette HTTP 异常"""
+    builtin_paths = ["/docs", "/redoc", "/openapi.json", "/openapi.yaml"]
+    if any(request.url.path.startswith(p) for p in builtin_paths):
+        return await app.default_exception_handler(request, exc)
+    
+    if exc.status_code == 404:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "code": 404,
+                "message": "URL拼写可能存在错误，请检查",
+                "data": None
+            }
+        )
+    
+    return await app.default_exception_handler(request, exc)
 
 @app.exception_handler(Exception)
 async def handle_unknown_exception(request: Request, exc: Exception):

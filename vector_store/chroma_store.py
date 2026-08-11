@@ -108,6 +108,14 @@ class ChromaVectorStore(BaseVectorStore):
             logger.error(f"向量检索失败: {str(e)}")
             raise VectorStoreError(f"检索失败: {str(e)}") from e
 
+    def collection_exists(self, collection_name: str) -> bool:
+        """按名称判断集合是否真实存在，与删除操作同口径校验"""
+        try:
+            self.client.get_collection(collection_name)
+            return True
+        except Exception:
+            return False
+
     def delete_collection(self, collection_name: str = None) -> None:
         """删除知识库集合，不传参则删除当前默认集合"""
         target = collection_name or self.collection_name

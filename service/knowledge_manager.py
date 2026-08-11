@@ -21,6 +21,11 @@ class KnowledgeManager:
 
     def build_from_dir(self, input_dir: str) -> dict:
         """从指定目录递归扫描所有 TXT 文件，批量构建知识库"""
+        # 先校验目录合法性
+        if not os.path.isdir(input_dir):
+            logger.warning(f"目录不存在 {input_dir}")
+            raise DocumentParseException(f"目录不存在 / 读取失败：{input_dir}")
+        
         # 递归扫描目录下所有 txt 文件
         txt_files = []
         for root, _, files in os.walk(input_dir):
@@ -109,12 +114,11 @@ class KnowledgeManager:
 
     def delete_knowledge_base(self, collection_name: str) -> None:
         """删除指定知识库集合"""
-        all_collections = self.list_knowledge_bases()
-        if collection_name not in all_collections:
-            raise KnowledgeNotFoundException(f"知识库「{collection_name}」不存在")
-
+        if not self.vector_store.collection_exists(collection_name):
+            raise KnowledgeNotFoundException(f"知识库 [{collection_name}] 不存在")
+        
         self.vector_store.delete_collection(collection_name)
-        logger.info(f"知识库「{collection_name}」删除成功")
+        logger.info(f"知识库 [{collection_name}] 删除成功")
 
     def add_single_document(self, file_path: str, collection_name: str = None) -> int:
         """单文档增量入库，处理逻辑与批量构建完全对齐"""
