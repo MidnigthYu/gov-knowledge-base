@@ -40,6 +40,9 @@ class Settings:
         # API 服务配置
         self.SERVER_HOST = os.getenv("SERVER_HOST", "0.0.0.0")
         self.SERVER_PORT: int = int(os.getenv("SERVER_PORT", 8000))
+
+         # 接口鉴权
+        self.API_KEY: str = os.getenv("API_KEY", "")
         
         # 启动时执行必填项校验
         self._validate_required()
