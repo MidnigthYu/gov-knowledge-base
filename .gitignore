@@ -36,3 +36,6 @@ tests/test_files/
 # 向量库持久化数据
 data/
 *.chroma/
+
+# 文件上传临时目录
+temp_uploads/

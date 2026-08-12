@@ -4,7 +4,6 @@ from common.exceptions import ConfigError
 
 class Settings:
     """项目统一配置管理类"""
-
     def __init__(self, env_file: str = ".env"):
 
         load_dotenv(env_file, override=False)
@@ -43,6 +42,10 @@ class Settings:
 
          # 接口鉴权
         self.API_KEY: str = os.getenv("API_KEY", "")
+
+        # 文件上传配置
+        self.UPLOAD_ALLOWED_SUFFIX: list = os.getenv("UPLOAD_ALLOWED_SUFFIX", ".txt,.md").split(",")
+        self.UPLOAD_TEMP_DIR: str = os.getenv("UPLOAD_TEMP_DIR", "./temp_uploads")
         
         # 启动时执行必填项校验
         self._validate_required()
@@ -60,3 +63,7 @@ class Settings:
 
 # 全局单例
 settings = Settings()
+
+def get_settings() -> Settings:
+    """获取全局配置单例，供 FastAPI 依赖注入使用"""
+    return settings
