@@ -33,6 +33,12 @@ class Settings:
         self.CHROMA_DEFAULT_COLLECTION: str = os.getenv("CHROMA_DEFAULT_COLLECTION","gov_policy_base")
         self.VECTOR_DEFAULT_TOP_K: int = int (os.getenv("VECTOR_DEFAULT_TOP_K", "5"))
 
+            # 重排序配置
+        self.RERANK_ENABLE: bool = os.getenv("RERANK_ENABLE", "True").lower() == "true"
+        self.RERANK_MODEL: str = os.getenv("RERANK_MODEL", "rerank")
+        self.RERANK_TOP_N: int = int(os.getenv("RERANK_TOP_N", "3"))
+        self.RECALL_TOP_K: int = int(os.getenv("RECALL_TOP_K", "20"))
+        
         # RAG配置
         self.RAG_DEFAULT_TOP_K: int = int (os.getenv("RAG_DEFAULT_TOP_K", "3"))
 

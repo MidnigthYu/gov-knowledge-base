@@ -13,6 +13,7 @@ class ErrorCode(Enum):
     # 大模型与嵌入类
     LLM_API_ERROR = (3001, "大模型接口调用异常")
     EMBEDDING_ERROR = (3002, "嵌入模型调用异常")
+    RERANK_ERROR = (3003, "重排序服务调用异常")
 
     # 向量库类
     VECTOR_STORE_ERROR = (4001, "向量数据库操作异常")
@@ -94,3 +95,10 @@ class DocumentParseException(FileProcessError):
     """文档解析失败异常，复用文件处理错误码"""
     default_error_code = ErrorCode.DOCUMENT_PARSE_FAILED
     pass
+
+
+class RerankError(GovRAGBaseError):
+    """重排序服务调用异常"""
+    default_error_code = ErrorCode.RERANK_ERROR
+    pass
+
