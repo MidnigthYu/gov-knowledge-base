@@ -12,6 +12,8 @@ def rag_query(req: QueryReq):
         top_k=req.top_k,
         similarity_threshold=req.similarity_threshold,
         return_sources=req.return_sources,
-        collection_name=req.collection_name
+        collection_name=req.collection_name,
+         enable_rerank=req.enable_rerank,
+        rerank_top_n=req.rerank_top_n
     )
     return ApiResponse(data=result)

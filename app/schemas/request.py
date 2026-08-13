@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel, Field
 
 class BuildKnowledgeReq(BaseModel):
@@ -13,6 +14,9 @@ class QueryReq(BaseModel):
         pattern=r"^[a-zA-Z0-9_-]{2,64}$",
         description="目标知识库名称，不传使用默认集合，仅允许字母、数字、下划线、短横线"
     )
+    
+    enable_rerank: Optional[bool] = Field(default=None, description="是否启用重排序，不传则使用系统配置")
+    rerank_top_n: Optional[int] = Field(default=None, ge=1, le=10, description="重排序返回的片段数量")
 
 class AddDocumentReq(BaseModel):
     file_path: str = Field(..., min_length=1, description="待入库文档的本地绝对路径")
