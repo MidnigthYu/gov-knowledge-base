@@ -46,7 +46,7 @@ class ChromaVectorStore(BaseVectorStore):
         embeddings: List[List[float]],
         metadatas: List[Dict] = None,
         ids: List[str] = None,
-        collection_name: str = None  # 可选目标集合名称
+        collection_name: str = None
     ) -> None:
         if not texts or not embeddings:
             raise VectorStoreError("文本和向量不能为空")
@@ -61,12 +61,21 @@ class ChromaVectorStore(BaseVectorStore):
 
         try:
             doc_ids = ids or [str(uuid.uuid4()) for _ in texts]
-            meta = metadatas if metadatas else None
+
+            if metadatas is None:
+                metadatas = [{} for _ in texts]
+            enhanced_metadatas = []
+            for idx, meta in enumerate(metadatas):
+                enhanced_meta = {**meta, "chunk_index": idx}
+                if "source" not in enhanced_meta:
+                    enhanced_meta["source"] = "unknown"
+                enhanced_metadatas.append(enhanced_meta)
+
             target_collection.add(
                 ids=doc_ids,
                 documents=texts,
                 embeddings=embeddings,
-                metadatas=meta
+                metadatas=enhanced_metadatas
             )
             logger.info(f"成功入库 {len(texts)} 条文档向量")
         except Exception as e:
@@ -74,10 +83,11 @@ class ChromaVectorStore(BaseVectorStore):
             raise VectorStoreError(f"文档入库失败: {str(e)}") from e
 
     def search(
-    self,
+        self,
         query_embedding: List[float],
         top_k: int = 5,
-        collection_name: str = None
+        collection_name: str = None,
+        similarity_threshold: float = 0.0 
     ) -> List[Dict]:
         if not query_embedding:
             raise VectorStoreError("查询向量不能为空")
@@ -107,15 +117,21 @@ class ChromaVectorStore(BaseVectorStore):
                 result["metadatas"][0],
                 result["distances"][0]
             ):
+                similarity = round(1 - dist, 4)
+                if similarity < similarity_threshold:
+                    continue
                 items.append({
                     "content": doc,
                     "metadata": meta,
-                    "similarity": round(1 - dist, 4)
+                    "similarity": similarity
                 })
+                
+            # 强制按相似度倒序排列
+            items.sort(key=lambda x: x["similarity"], reverse=True)
+            logger.info(f"向量检索：原始召回{len(result['documents'][0])}条，阈值过滤后剩余{len(items)}条，阈值={similarity_threshold}")
 
-            # 按相似度降序
-            return sorted(items, key=lambda x: x["similarity"], reverse=True)
-
+            return items
+            
         except Exception as e:
             logger.error(f"向量检索失败: {str(e)}")
             raise VectorStoreError(f"检索失败: {str(e)}") from e

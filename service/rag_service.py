@@ -1,3 +1,4 @@
+from client.zhipu_reranker import ZhipuReranker
 from common.logger import get_logger
 from common.exceptions import LLMAPIError, VectorStoreError, EmbeddingError
 from config.settings import settings
@@ -16,8 +17,8 @@ class RagService:
         self.llm_client = llm_client
         self.embedding_client = embedding_client
         self.top_k = top_k if top_k is not None else settings.RAG_DEFAULT_TOP_K
+        self.reranker = ZhipuReranker() if settings.RERANK_ENABLE else None
 
-        # 政务场景专属系统提示词
         self.system_prompt_template = """你是专业的政务政策咨询助手，请严格遵守以下规则：
 1. 所有回答必须严格基于下方提供的【参考内容】，不得编造、引申任何政策信息
 2. 如果参考内容中没有相关信息，请明确回复："抱歉，暂无与该问题相关的政策信息"
@@ -29,7 +30,8 @@ class RagService:
 """
     def query(self, user_question: str, top_k: int = None,
           similarity_threshold: float = 0.0, return_sources: bool = True,
-          collection_name: str = None) -> dict:
+          collection_name: str = None,
+          enable_rerank: bool = None, rerank_top_n: int = None) -> dict:
         """执行一次RAG问答"""
         # 将用户问题转为查询向量
         try:
@@ -37,6 +39,17 @@ class RagService:
         except Exception as e:
             logger.error(f"查询文本向量化失败: {str(e)}")
             raise EmbeddingError(f"向量化失败: {str(e)}") from e
+
+         # 重排序参数兜底
+        if enable_rerank is None:
+            enable_rerank = settings.RERANK_ENABLE
+        if rerank_top_n is None:
+            rerank_top_n = settings.RERANK_TOP_N
+
+        # 实际召回量
+        actual_top_k = top_k
+        if actual_top_k is None:
+            actual_top_k = settings.RECALL_TOP_K if enable_rerank else self.top_k
 
         # 执行向量相似度检索
         actual_top_k = top_k if top_k is not None else self.top_k
@@ -49,6 +62,14 @@ class RagService:
         except Exception as e:
             logger.error(f"向量检索执行失败, 问题: {user_question}, 错误: {str(e)}")
             raise VectorStoreError(f"检索失败: {str(e)}") from e
+
+        # 重排序精排：开关开启 + 客户端存在 + 有召回结果时执行
+        if self.reranker and enable_rerank and search_results:
+            search_results = self.reranker.rerank(
+                query=user_question,
+                documents=search_results,
+                top_n=rerank_top_n
+            )
 
         # 按相似度阈值过滤结果
         filtered_results = [
