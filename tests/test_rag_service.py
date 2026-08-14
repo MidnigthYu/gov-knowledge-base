@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock
 from service.rag_service import RagService
-from common.exceptions import LLMAPIError, VectorStoreError, EmbeddingError
+from common.exceptions import LLMAPIError, VectorStoreError
 
 class TestRagService(unittest.TestCase):
     """RAG 问答服务单元测试"""
@@ -113,6 +113,41 @@ class TestRagService(unittest.TestCase):
         self.assertEqual(result["hit_count"], 1)
         self.assertEqual(len(result["sources"]), 1)
 
+    def test_rerank_top_n_greater_than_candidates_auto_truncate(self):
+        """精排数量大于粗召回实际数量时，自动按实际数量截断，不越界"""
+        self.mock_embedding.embed.return_value = [0.1] * 1024
+        # 模拟粗召回仅2条候选
+        self.mock_vector_store.search.return_value = [
+            {"content": "片段A", "metadata": {"source_file": "a.txt"}, "similarity": 0.7},
+            {"content": "片段B", "metadata": {"source_file": "b.txt"}, "similarity": 0.6}
+        ]
+        self.mock_reranker.rerank.return_value = [
+            {"content": "片段B", "metadata": {"source_file": "b.txt"}, "similarity": 0.92}
+        ]
+        self.mock_llm_client.chat.return_value = "测试答案"
+
+        # 传入远大于实际数量的精排值
+        result = self.rag_service.query("测试问题", enable_rerank=True, rerank_top_n=10)
+
+        # 断言：重排序调用时实际传入的 top_n 为 2（自动截断）
+        call_kwargs = self.mock_reranker.rerank.call_args.kwargs
+        self.assertEqual(call_kwargs["top_n"], 2)
+        # 断言：接口正常返回，无报错
+        self.assertIn("answer", result)
+
+    def test_empty_search_skip_rerank(self):
+        """检索结果为空时，直接跳过重排序调用，不触发客户端"""
+        self.mock_embedding.embed.return_value = [0.1] * 1024
+        # 模拟向量检索返回空
+        self.mock_vector_store.search.return_value = []
+
+        result = self.rag_service.query("测试问题", enable_rerank=True, rerank_top_n=3)
+
+        # 断言：重排序客户端零调用
+        self.mock_reranker.rerank.assert_not_called()
+        # 断言：返回兜底答案，命中数为0
+        self.assertEqual(result["hit_count"], 0)
+        self.assertIn("暂无", result["answer"])
 
 if __name__ == "__main__":
     unittest.main()
