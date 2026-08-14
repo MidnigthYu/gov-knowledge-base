@@ -1,3 +1,4 @@
+import time
 from client.zhipu_reranker import ZhipuReranker
 from common.logger import get_logger
 from common.exceptions import LLMAPIError, VectorStoreError, EmbeddingError
@@ -52,7 +53,6 @@ class RagService:
             actual_top_k = settings.RECALL_TOP_K if enable_rerank else self.top_k
 
         # 执行向量相似度检索
-        actual_top_k = top_k if top_k is not None else self.top_k
         try:
             search_results = self.vector_store.search(
                 query_embedding=query_embedding,
@@ -65,11 +65,19 @@ class RagService:
 
         # 重排序精排：开关开启 + 客户端存在 + 有召回结果时执行
         if self.reranker and enable_rerank and search_results:
+            original_count = len(search_results)
+            actual_rerank_n = min(rerank_top_n, original_count)
+
+            # 执行重排序并埋点耗时
+            start_time = time.time()
             search_results = self.reranker.rerank(
                 query=user_question,
                 documents=search_results,
-                top_n=rerank_top_n
+                top_n=actual_rerank_n
             )
+            cost_ms = (time.time() - start_time) * 1000
+
+            logger.info(f"重排序完成：初筛{original_count}条 → 精排{len(search_results)}条，耗时{cost_ms:.0f}ms")
 
         # 按相似度阈值过滤结果
         filtered_results = [

@@ -12,7 +12,7 @@ class Settings:
         self.ZHIPU_API_KEY = os.getenv("ZHIPU_API_KEY", "")
         self.ZHIPU_BASE_URL = os.getenv("ZHIPU_BASE_URL", 
         "https://open.bigmodel.cn/api/paas/v4")
-
+ 
         self.DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
         self.DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", 
         "https://api.deepseek.com")
@@ -31,13 +31,13 @@ class Settings:
         # 向量库配置
         self.CHROMA_PERSIST_DIR: str = os.getenv( "CHROMA_PERSIST_DIR","./data/chroma")
         self.CHROMA_DEFAULT_COLLECTION: str = os.getenv("CHROMA_DEFAULT_COLLECTION","gov_policy_base")
-        self.VECTOR_DEFAULT_TOP_K: int = int (os.getenv("VECTOR_DEFAULT_TOP_K", "5"))
+        self.VECTOR_DEFAULT_TOP_K: int = int (os.getenv("VECTOR_DEFAULT_TOP_K", "10"))
 
-            # 重排序配置
-        self.RERANK_ENABLE: bool = os.getenv("RERANK_ENABLE", "True").lower() == "true"
+        # 重排序配置
+        self.RERANK_ENABLE: bool = os.getenv("RERANK_ENABLE", "False").lower() == "true"
         self.RERANK_MODEL: str = os.getenv("RERANK_MODEL", "rerank")
-        self.RERANK_TOP_N: int = int(os.getenv("RERANK_TOP_N", "3"))
-        self.RECALL_TOP_K: int = int(os.getenv("RECALL_TOP_K", "20"))
+        self.RERANK_TOP_N: int = int(os.getenv("RERANK_TOP_N", "5"))
+        self.RECALL_TOP_K: int = int(os.getenv("RECALL_TOP_K", "10"))
         
         # RAG配置
         self.RAG_DEFAULT_TOP_K: int = int (os.getenv("RAG_DEFAULT_TOP_K", "3"))
@@ -46,7 +46,7 @@ class Settings:
         self.SERVER_HOST = os.getenv("SERVER_HOST", "0.0.0.0")
         self.SERVER_PORT: int = int(os.getenv("SERVER_PORT", 8000))
 
-         # 接口鉴权
+        # 接口鉴权
         self.API_KEY: str = os.getenv("API_KEY", "")
 
         # 文件上传配置
