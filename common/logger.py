@@ -1,10 +1,12 @@
 import logging
 import os
+import sys
 from logging.handlers import TimedRotatingFileHandler
 
 def get_logger(name: str) -> logging.Logger:
     """获取配置好的日志器，首次调用时创建日志目录"""
     from config.settings import settings
+
     logger = logging.getLogger(name)
     if logger.handlers:  # 避免重复添加处理器
         return logger
@@ -16,8 +18,9 @@ def get_logger(name: str) -> logging.Logger:
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
 
-    # 控制台输出
-    console_handler = logging.StreamHandler()
+    # 控制台输出强制 UTF-8 编码
+    stdout_utf8 = open(sys.stdout.fileno(), mode="w", encoding="utf-8", buffering=1, closefd=False)
+    console_handler = logging.StreamHandler(stream=stdout_utf8)
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
 
