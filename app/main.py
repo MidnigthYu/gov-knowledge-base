@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 
 from config.settings import settings
 from client.zhipu_client import ZhipuClient
@@ -12,12 +13,13 @@ from vector_store.chroma_store import ChromaVectorStore
 from service.knowledge_manager import KnowledgeManager
 from service.rag_service import RagService
 from common.exceptions import GovRAGBaseError, ErrorCode
+from common.response import ResponseUtil
 from common.logger import get_logger
 
 logger = get_logger(__name__)
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_: FastAPI):
     """服务生命周期：启动时初始化业务组件"""
     deps.llm_client = ZhipuClient()
     deps.embedding_client = ZhipuEmbeddingClient()
@@ -48,15 +50,21 @@ app.include_router(qa.router)
 
 # 全局异常处理
 @app.exception_handler(GovRAGBaseError)
-async def handle_business_exception(request: Request, exc: GovRAGBaseError):
+async def handle_business_exception(_: Request, exc: GovRAGBaseError):
     """统一捕获业务异常，返回标准错误码"""
+    logger.warning(f"业务异常 | code={exc.code} | message={exc.message}")
     return JSONResponse(
         status_code=200,
-        content={
-            "code": exc.code,
-            "message": exc.message,
-            "data": None
-        }
+        content=ResponseUtil.error(exc.error_code, detail=exc.detail)
+    )
+
+@app.exception_handler(RequestValidationError)
+async def handle_validation_exception(_: Request, exc: RequestValidationError):
+    """统一捕获参数校验异常，对齐标准格式"""
+    logger.warning(f"参数校验失败: {exc.errors()}")
+    return JSONResponse(
+        status_code=400,
+        content=ResponseUtil.error(ErrorCode.PARAM_INVALID, detail=str(exc.errors()))
     )
 
 @app.exception_handler(StarletteHTTPException)
@@ -64,39 +72,24 @@ async def handle_http_exception(request: Request, exc: StarletteHTTPException):
     """统一处理 Starlette HTTP 异常"""
     builtin_paths = ["/docs", "/redoc", "/openapi.json", "/openapi"]
     if any(request.url.path.startswith(p) for p in builtin_paths):
-        return JSONResponse(
-            status_code=exc.status_code,
-            content={"code": exc.status_code, "message": exc.detail, "data": None}
-        )
+        return exc
 
     if exc.status_code == 404:
         return JSONResponse(
             status_code=404,
-            content={
-                "code": 404,
-                "message": "URL拼写可能存在错误，请检查",
-                "data": None
-            }
+            content=ResponseUtil.error(ErrorCode.NOT_FOUND)
         )
     
     return JSONResponse(
         status_code=exc.status_code,
-        content={
-            "code": exc.status_code,
-            "message": exc.detail,
-            "data": None
-        }
+        content=ResponseUtil.error(ErrorCode.SYSTEM_ERROR, detail=str(exc.detail))
     )
 
 @app.exception_handler(Exception)
-async def handle_unknown_exception(request: Request, exc: Exception):
+async def handle_unknown_exception(_: Request, exc: Exception):
     """捕获未处理的系统异常，隐藏堆栈信息"""
     logger.error(f"系统未捕获异常: {str(exc)}", exc_info=True)
     return JSONResponse(
         status_code=500,
-        content={
-            "code": ErrorCode.SYSTEM_ERROR.code,
-            "message": ErrorCode.SYSTEM_ERROR.message,
-            "data": None
-        }
+        content=ResponseUtil.error(ErrorCode.SYSTEM_ERROR)
     )
