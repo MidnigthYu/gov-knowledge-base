@@ -51,28 +51,35 @@ async def upload_document(
 ):
     from app.deps import kb_manager
     from app.schemas.response import ApiResponse
+    from common.exceptions import ErrorCode, GovRAGBaseError
 
     # 文件格式白名单校验
     file_suffix = Path(file.filename).suffix.lower()
     if file_suffix not in settings.UPLOAD_ALLOWED_SUFFIX:
-        raise HTTPException(
-            status_code=400,
-            detail=f"不支持该文件格式，仅允许：{', '.join(settings.UPLOAD_ALLOWED_SUFFIX)}"
-        )
+        raise GovRAGBaseError(ErrorCode.FILE_FORMAT_NOT_SUPPORT)
+
+    # 文件名安全过滤：剥离路径字符，防范路径遍历漏洞
+    safe_filename = os.path.basename(file.filename)
 
     # 初始化临时目录
     temp_dir = Path(settings.UPLOAD_TEMP_DIR)
     temp_dir.mkdir(parents=True, exist_ok=True)
 
     # 生成带时间戳的唯一临时文件名，避免覆盖
-    temp_filename = f"{int(time.time())}_{file.filename}"
+    temp_filename = f"{int(time.time())}_{safe_filename}"
     temp_file_path = temp_dir / temp_filename
 
     try:
-        # 读取文件内容，空文件拦截
+        # 读取文件内容
         file_content = await file.read()
+
+        # 文件大小校验
+        if len(file_content) > settings.MAX_UPLOAD_SIZE:
+            raise GovRAGBaseError(ErrorCode.FILE_SIZE_EXCEED)
+
+        # 空文件拦截
         if not file_content.strip():
-            raise HTTPException(status_code=400, detail="上传文件内容为空")
+            raise GovRAGBaseError(ErrorCode.PARAM_INVALID, detail="上传文件内容为空")
 
         with open(temp_file_path, "wb") as f:
             f.write(file_content)
@@ -87,7 +94,7 @@ async def upload_document(
         return ApiResponse(data={
             "added_chunks": added_chunks,
             "collection_name": target_collection,
-            "filename": file.filename
+            "filename": safe_filename
         })
 
     finally:

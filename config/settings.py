@@ -50,8 +50,9 @@ class Settings:
         self.API_KEY: str = os.getenv("API_KEY", "")
 
         # 文件上传配置
-        self.UPLOAD_ALLOWED_SUFFIX: list = os.getenv("UPLOAD_ALLOWED_SUFFIX", ".txt,.md").split(",")
+        self.UPLOAD_ALLOWED_SUFFIX: list = os.getenv("UPLOAD_ALLOWED_SUFFIX", ".txt,.md,.pdf,.docx").split(",")
         self.UPLOAD_TEMP_DIR: str = os.getenv("UPLOAD_TEMP_DIR", "./temp_uploads")
+        self.MAX_UPLOAD_SIZE: int = int(os.getenv("MAX_UPLOAD_SIZE", "10485760"))
         
         # 启动时执行必填项校验
         self._validate_required()
