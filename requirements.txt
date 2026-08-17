@@ -22,3 +22,6 @@ starlette==1.5.0
 
 # 文件上传解析
 python-multipart==0.0.32
+
+# Web 前端UI
+streamlit==1.61.1
