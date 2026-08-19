@@ -60,11 +60,6 @@ class Settings:
     def _validate_required(self):
         """校验必填配置项，缺失立即报错"""
         missing = []
-        if not self.ZHIPU_API_KEY:
-            missing.append("ZHIPU_API_KEY")
-        if not self.DEEPSEEK_API_KEY:
-            missing.append("DEEPSEEK_API_KEY")
-
         if missing:
             raise ConfigError(f"缺失必填配置项: {', '.join(missing)}，请检查 .env 文件")
 

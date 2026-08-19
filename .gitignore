@@ -26,6 +26,7 @@ logs/
 # 测试数据、临时文件
 data/
 tmp/
+scripts/
 data/**/*.txt
 data/**/*.pdf
 data/**/*.docx
