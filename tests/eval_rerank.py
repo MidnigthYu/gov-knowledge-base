@@ -134,7 +134,7 @@ def print_result(res: dict):
 
 
 if __name__ == "__main__":
-    # ========== 1. 基线测试：关闭重排序 ==========
+    # ==========关闭重排序 ==========
     print("【基线测试：关闭重排序】")
     baseline = run_single_eval(
         enable_rerank=False,
@@ -143,7 +143,7 @@ if __name__ == "__main__":
     )
     print_result(baseline)
 
-    # ========== 2. 基准测试：默认参数开启重排序 ==========
+    # ========== 默认参数开启重排序 ==========
     print("【基准测试：默认参数开启重排序】")
     default_rerank = run_single_eval(
         enable_rerank=True,
@@ -152,13 +152,13 @@ if __name__ == "__main__":
     )
     print_result(default_rerank)
 
-    # ========== 3. 参数寻优：不同粗召回量对比 ==========
+    # ========== 不同粗召回量对比 ==========
     print("【参数寻优：不同粗召回量对比（固定精排3条）】")
     for k in [10, 15, 20, 30]:
         res = run_single_eval(enable_rerank=True, recall_top_k=k, rerank_top_n=3)
         print_result(res)
 
-    # ========== 4. 参数寻优：不同精排数量对比 ==========
+    # ========== 不同精排数量对比 ==========
     print("【参数寻优：不同精排数量对比（固定粗召回20条）】")
     for n in [2, 3, 5]:
         res = run_single_eval(enable_rerank=True, recall_top_k=20, rerank_top_n=n)

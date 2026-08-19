@@ -1,7 +1,7 @@
 import os
 import time
 from pathlib import Path
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, UploadFile
 from app.schemas.request import BuildKnowledgeReq, AddDocumentReq
 from common.auth import verify_api_key
 from config.settings import get_settings
@@ -46,7 +46,7 @@ def delete_knowledge_base(collection_name: str):
 @router.post("/upload", summary="单文件上传并增量入库")
 async def upload_document(
     file: UploadFile = File(...),
-    collection_name: str = None,
+    collection_name: str = Form(None),
     settings = Depends(get_settings)
 ):
     from app.deps import kb_manager
@@ -56,7 +56,7 @@ async def upload_document(
     # 文件格式白名单校验
     file_suffix = Path(file.filename).suffix.lower()
     if file_suffix not in settings.UPLOAD_ALLOWED_SUFFIX:
-        raise GovRAGBaseError(ErrorCode.FILE_FORMAT_NOT_SUPPORT)
+        raise GovRAGBaseError(ErrorCode.FILE_FORMAT_NOT_SUPPORTED)
 
     # 文件名安全过滤：剥离路径字符，防范路径遍历漏洞
     safe_filename = os.path.basename(file.filename)
