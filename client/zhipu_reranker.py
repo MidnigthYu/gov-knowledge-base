@@ -11,7 +11,8 @@ class ZhipuReranker(BaseReranker):
     def __init__(self):
         self.api_key = settings.ZHIPU_API_KEY
         self.model = settings.RERANK_MODEL
-        self.base_url = "https://open.bigmodel.cn/api/paas/v4/rerank"
+        self.base_url = settings.ZHIPU_BASE_URL.rstrip("/")
+        self.timeout = settings.LLM_REQUEST_TIMEOUT
 
     def rerank(self, query: str, documents: List[Dict], top_n: int = 3) -> List[Dict]:
         if not documents:
@@ -31,7 +32,7 @@ class ZhipuReranker(BaseReranker):
                 "Content-Type": "application/json"
             }
 
-            response = requests.post(self.base_url, json=payload, headers=headers, timeout=10)
+            response = requests.post(f"{self.base_url}/rerank", json=payload, headers=headers, timeout=self.timeout)
             response.raise_for_status()
             data = response.json()
 

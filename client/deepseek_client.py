@@ -18,3 +18,11 @@ class DeepSeekClient(BaseLLMClient):
 
     def _parse_response(self, response_data: dict) -> str:
         return response_data["choices"][0]["message"]["content"]
+
+    def _parse_stream_chunk(self, chunk_data: dict) -> str | None:
+        """解析DeepSeek流式响应块，返回增量文本"""
+        choices = chunk_data.get("choices", [])
+        if not choices:
+            return None
+        delta = choices[0].get("delta", {})
+        return delta.get("content", "")

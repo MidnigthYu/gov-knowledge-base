@@ -17,23 +17,12 @@ class ResponseUtil:
 
     @staticmethod
     def error(error_enum: ErrorCode, detail: Optional[str] = None) -> dict:
-        """失败响应，传入ErrorCode枚举成员"""
-        message = error_enum.message
-        if detail:
-            message = f"{message}：{detail}"
-        return {
+        """失败响应"""
+        result = {
             "code": error_enum.code,
-            "message": message,
+            "message": error_enum.message,
             "data": None
         }
-
-    @staticmethod
-    def error_by_code(code: int, message: str, detail: str = None) -> dict:
-        """直接通过错误码和消息返回错误响应，适配自定义异常类"""
         if detail:
-            message = f"{message}：{detail}"
-        return {
-            "code": code,
-            "message": message,
-            "data": None
-        }
+            result["detail"] = detail
+        return result

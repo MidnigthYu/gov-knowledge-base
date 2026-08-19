@@ -1,6 +1,6 @@
 import os
 from common.logger import get_logger
-from common.exceptions import EmbeddingError, VectorStoreError, KnowledgeNotFoundException, DocumentParseException
+from common.exceptions import EmbeddingError, VectorStoreError, KnowledgeNotFoundError, DocumentParseError
 from utils.text_cleaner import safe_read_file, clean_single_text
 from utils.text_splitter import TextSplitter
 
@@ -24,7 +24,7 @@ class KnowledgeManager:
         # 先校验目录合法性
         if not os.path.isdir(input_dir):
             logger.warning(f"目录不存在 {input_dir}")
-            raise DocumentParseException(f"目录不存在 / 读取失败：{input_dir}")
+            raise DocumentParseError(f"目录不存在 / 读取失败：{input_dir}")
         
         # 递归扫描目录下所有 txt 文件
         txt_files = []
@@ -87,7 +87,7 @@ class KnowledgeManager:
         total_chunks = len(all_texts)
         if total_chunks > 0:
             try:
-                embeddings = self.embedding_client.batch_embed(all_texts)
+                embeddings = self.embedding_client.embed_batch(all_texts)
                 self.vector_store.add_documents(all_texts, embeddings, all_metadatas)
                 logger.info(f"批量入库完成，共 {total_chunks} 个文档分块")
             except EmbeddingError as e:
@@ -97,7 +97,6 @@ class KnowledgeManager:
                 logger.error(f"向量库批量入库失败：{str(e)}")
                 raise
 
-        # 返回统计结果
         result = {
             "total_files": len(txt_files),
             "success_files": success_count,
@@ -115,7 +114,7 @@ class KnowledgeManager:
     def delete_knowledge_base(self, collection_name: str) -> None:
         """删除指定知识库集合"""
         if not self.vector_store.collection_exists(collection_name):
-            raise KnowledgeNotFoundException(f"知识库 [{collection_name}] 不存在")
+            raise KnowledgeNotFoundError(f"知识库 [{collection_name}] 不存在")
         
         self.vector_store.delete_collection(collection_name)
         logger.info(f"知识库 [{collection_name}] 删除成功")
@@ -158,11 +157,11 @@ class KnowledgeManager:
                 return 0
 
         except Exception as e:
-            raise DocumentParseException(f"文档解析失败: {str(e)}") from e
+            raise DocumentParseError(f"文档解析失败: {str(e)}") from e
 
         try:
             # 批量向量化
-            embeddings = self.embedding_client.batch_embed(all_texts)
+            embeddings = self.embedding_client.embed_batch(all_texts)
 
             # 写入目标向量库
             self.vector_store.add_documents(

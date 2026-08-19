@@ -5,6 +5,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.staticfiles import StaticFiles
+import os
 
 from config.settings import settings
 from client.zhipu_client import ZhipuClient
@@ -47,6 +49,9 @@ app = FastAPI(
 app.include_router(health.router)
 app.include_router(knowledge.router)
 app.include_router(qa.router)
+# 挂载前端静态资源目录
+web_dir = os.path.join(os.path.dirname(__file__), "..", "web")
+app.mount("/", StaticFiles(directory=web_dir, html=True), name="web_static")
 
 # 全局异常处理
 @app.exception_handler(GovRAGBaseError)

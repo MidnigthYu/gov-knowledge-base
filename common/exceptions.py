@@ -12,7 +12,7 @@ class ErrorCode(Enum):
     DOCUMENT_PARSE_FAILED = (2002, "文档解析失败")
 
     # 文件文档类
-    FILE_FORMAT_NOT_SUPPORT = (3101, "文件格式不支持，仅支持PDF/Word/TXT")
+    FILE_FORMAT_NOT_SUPPORTED = (3101, "文件格式不支持，仅支持PDF/Word/TXT")
     FILE_SIZE_EXCEED = (3102, "文件大小超出限制，最大支持10MB")
 
     # 大模型与嵌入类
@@ -61,12 +61,6 @@ class GovRAGBaseError(Exception):
         super().__init__(self.message)
 
 
-class LLMError(GovRAGBaseError):
-    """大模型相关异常基类"""
-    default_error_code = ErrorCode.LLM_API_ERROR
-    pass
-
-
 class LLMAPIError(GovRAGBaseError):
     """大模型接口调用异常"""
     default_error_code = ErrorCode.LLM_API_ERROR
@@ -100,19 +94,19 @@ class EmbeddingError(GovRAGBaseError):
     pass
 
 
-class ParamInvalidException(GovRAGBaseError):
+class ParamInvalidError(GovRAGBaseError):
     """参数校验不合法异常"""
     default_error_code = ErrorCode.PARAM_INVALID
     pass
 
 
-class KnowledgeNotFoundException(GovRAGBaseError):
+class KnowledgeNotFoundError(GovRAGBaseError):
     """知识库集合不存在异常"""
     default_error_code = ErrorCode.KNOWLEDGE_NOT_FOUND
     pass
 
 
-class DocumentParseException(FileProcessError):
+class DocumentParseError(FileProcessError):
     """文档解析失败异常，复用文件处理错误码"""
     default_error_code = ErrorCode.DOCUMENT_PARSE_FAILED
     pass

@@ -1,4 +1,4 @@
-import time
+import time, json
 from client.zhipu_reranker import ZhipuReranker
 from common.logger import get_logger
 from common.exceptions import LLMAPIError, VectorStoreError, EmbeddingError
@@ -123,3 +123,65 @@ class RagService:
 
         logger.info(f"RAG问答完成，命中{result['hit_count']}条片段")
         return result
+
+    def prepare_query_context(self, user_question: str, top_k: int = None,
+                         similarity_threshold: float = 0.0,
+                         collection_name: str = None,
+                         enable_rerank: bool = None, rerank_top_n: int = None):
+        """同步执行检索、重排、Prompt组装，返回 (最终提示词, 过滤后结果列表)"""
+        try:
+            query_embedding = self.embedding_client.embed_single(user_question)
+        except Exception as e:
+            logger.error(f"查询文本向量化失败：{str(e)}")
+            raise EmbeddingError(f"向量化失败：{str(e)}") from e
+
+        if enable_rerank is None:
+            enable_rerank = settings.RERANK_ENABLE
+        if rerank_top_n is None:
+            rerank_top_n = settings.RERANK_TOP_N
+
+        actual_top_k = top_k
+        if actual_top_k is None:
+            actual_top_k = settings.RECALL_TOP_K if enable_rerank else self.top_k
+
+        try:
+            search_results = self.vector_store.search(
+                query_embedding=query_embedding,
+                top_k=actual_top_k,
+                collection_name=collection_name
+            )
+        except Exception as e:
+            logger.error(f"向量检索执行失败，问题：{user_question}，错误：{str(e)}")
+            raise VectorStoreError(f"检索失败：{str(e)}") from e
+
+        # 重排序精排
+        if self.reranker and enable_rerank and search_results:
+            original_count = len(search_results)
+            actual_rerank_n = min(rerank_top_n, original_count)
+            start_time = time.time()
+            search_results = self.reranker.rerank(
+                query=user_question,
+                documents=search_results,
+                top_n=actual_rerank_n
+            )
+            cost_ms = (time.time() - start_time) * 1000
+            logger.info(f"重排序完成：初筛{original_count}条 → 精排{len(search_results)}条，耗时{cost_ms:.0f}ms")
+
+        # 按相似度阈值过滤
+        filtered_results = [
+            doc for doc in search_results
+            if doc.get("similarity", 0) >= similarity_threshold
+        ]
+
+        # 拼接参考上下文
+        if not filtered_results:
+            context_text = ""
+        else:
+            context_blocks = []
+            for idx, doc in enumerate(filtered_results):
+                context_blocks.append(f"片段{idx + 1}:{doc['content']}")
+            context_text = "\n---\n".join(context_blocks)
+
+        # 格式化最终提示词
+        final_system_prompt = self.system_prompt_template.format(context=context_text)
+        return final_system_prompt, filtered_results
