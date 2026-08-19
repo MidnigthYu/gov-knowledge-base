@@ -86,4 +86,5 @@
 | `/api/knowledge/{collection_name}` | DELETE | 删除指定知识库集合 | 需 API Key |
 | `/api/qa/query` | POST | RAG智能问答，支持动态配置召回参数 | 公开 |
 | `/api/qa/stream` | POST | SSE 流式智能问答，逐字返回回答与引用来源 | 公开 |
+
 完整接口文档启动服务后访问：`http://127.0.0.1:8000/docs`
