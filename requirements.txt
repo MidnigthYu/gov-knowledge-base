@@ -1,5 +1,5 @@
 # HTTP请求
-requests==2.32.3
+requests>=2.32.0,<3.0.0
 
 # 环境变量读取
 python-dotenv==1.0.0
@@ -10,7 +10,7 @@ chardet==5.2.0
 # 向量数据库
 chromadb==1.5.9
 
-# # API服务框架
+# # API服务框架1
 fastapi==0.141.1
 uvicorn==0.52.1
 
@@ -18,7 +18,7 @@ uvicorn==0.52.1
 pydantic==2.13.4
 
 # ASGI 核心
-starlette==1.5.0
+starlette==0.46.0
 
 # 文件上传解析
 python-multipart==0.0.32
