@@ -33,7 +33,7 @@ class ChromaVectorStore(BaseVectorStore):
                 )
             self.collection = self.client.get_or_create_collection(
                 name=self.collection_name,
-                metadata={"hnsw:space": "cosine"}
+                metadata={"hnsw:space": "cosine", "app": "gov-rag"}
             )
             logger.info(f"Chroma集合初始化成功: {self.collection_name}")
         except Exception as e:
@@ -54,10 +54,8 @@ class ChromaVectorStore(BaseVectorStore):
             raise VectorStoreError("文本数量与向量数量不一致")
 
         # 动态获取目标集合
-        if collection_name and collection_name != self.collection_name:
-            target_collection = self.client.get_or_create_collection(collection_name)
-        else:
-            target_collection = self.collection
+        target_name = collection_name if collection_name else self.collection_name
+        target_collection = self.client.get_or_create_collection(target_name, metadata={"app": "gov-rag"})
 
         try:
             doc_ids = ids or [str(uuid.uuid4()) for _ in texts]
@@ -92,9 +90,16 @@ class ChromaVectorStore(BaseVectorStore):
         if not query_embedding:
             raise VectorStoreError("查询向量不能为空")
 
-        # 动态获取目标集合
-        if collection_name and collection_name != self.collection_name:
-            target_collection = self.client.get_or_create_collection(collection_name)
+        # 确定目标集合名称
+        target_collection_name = collection_name if collection_name else self.collection_name
+
+        # 严格校验集合存在性，不存在直接抛出业务异常
+        if not self.collection_exists(target_collection_name):
+            raise VectorStoreError(f"集合{target_collection_name}不存在")
+
+        # 获取目标集合对象
+        if target_collection_name != self.collection_name:
+            target_collection = self.client.get_collection(target_collection_name)
         else:
             target_collection = self.collection
 
@@ -137,10 +142,10 @@ class ChromaVectorStore(BaseVectorStore):
             raise VectorStoreError(f"检索失败: {str(e)}") from e
 
     def collection_exists(self, collection_name: str) -> bool:
-        """按名称判断集合是否真实存在，与删除操作同口径校验"""
+        """按业务标记判断集合是否真实存在，过滤系统集合与脏集合"""
         try:
-            self.client.get_collection(collection_name)
-            return True
+            col = self.client.get_collection(collection_name)
+            return col.metadata and col.metadata.get("app") == "gov-rag"
         except Exception:
             return False
 
@@ -155,9 +160,9 @@ class ChromaVectorStore(BaseVectorStore):
             raise VectorStoreError(f"删除集合失败: {str(e)}") from e
 
     def list_collections(self) -> list[str]:
-        """获取所有知识库集合名称"""
-        collections = self.client.list_collections()
-        return [col.name for col in collections]
+        """获取所有业务知识库集合名称，过滤Chroma系统集合"""
+        all_cols = self.client.list_collections()
+        return [col.name for col in all_cols if col.metadata and col.metadata.get("app") == "gov-rag"]
 
     def count(self) -> int:
         try:

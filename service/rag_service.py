@@ -4,7 +4,9 @@ from common.logger import get_logger
 from common.exceptions import LLMAPIError, VectorStoreError, EmbeddingError
 from config.settings import settings
 
+
 logger = get_logger(__name__)
+
 
 class RagService:
     """
@@ -29,19 +31,22 @@ class RagService:
 【参考内容】
 {context}
 """
+
     def query(self, user_question: str, top_k: int = None,
-          similarity_threshold: float = 0.0, return_sources: bool = True,
-          collection_name: str = None,
-          enable_rerank: bool = None, rerank_top_n: int = None) -> dict:
+            similarity_threshold: float = 0.0, 
+            return_sources: bool = True,
+            collection_name: str = None,
+            enable_rerank: bool = None, 
+            rerank_top_n: int = None) -> dict:
         """执行一次RAG问答"""
         # 将用户问题转为查询向量
         try:
-            query_embedding = self.embedding_client.embed(user_question)
+            query_embedding = self.embedding_client.embed_single(user_question)
         except Exception as e:
             logger.error(f"查询文本向量化失败: {str(e)}")
             raise EmbeddingError(f"向量化失败: {str(e)}") from e
 
-         # 重排序参数兜底
+        # 重排序参数兜底
         if enable_rerank is None:
             enable_rerank = settings.RERANK_ENABLE
         if rerank_top_n is None:
@@ -57,29 +62,14 @@ class RagService:
             search_results = self.vector_store.search(
                 query_embedding=query_embedding,
                 top_k=actual_top_k,
+                similarity_threshold=similarity_threshold,
                 collection_name=collection_name
             )
         except Exception as e:
             logger.error(f"向量检索执行失败, 问题: {user_question}, 错误: {str(e)}")
             raise VectorStoreError(f"检索失败: {str(e)}") from e
 
-        # 重排序精排：开关开启 + 客户端存在 + 有召回结果时执行
-        if self.reranker and enable_rerank and search_results:
-            original_count = len(search_results)
-            actual_rerank_n = min(rerank_top_n, original_count)
-
-            # 执行重排序并埋点耗时
-            start_time = time.time()
-            search_results = self.reranker.rerank(
-                query=user_question,
-                documents=search_results,
-                top_n=actual_rerank_n
-            )
-            cost_ms = (time.time() - start_time) * 1000
-
-            logger.info(f"重排序完成：初筛{original_count}条 → 精排{len(search_results)}条，耗时{cost_ms:.0f}ms")
-
-        # 按相似度阈值过滤结果
+        # 相似度阈值过滤
         filtered_results = [
             doc for doc in search_results
             if doc.get("similarity", 0) >= similarity_threshold
@@ -90,8 +80,24 @@ class RagService:
             return {
                 "answer": "抱歉，暂无与该问题相关的政策信息。",
                 "sources": [],
-            "hit_count": 0
-        }
+                "hit_count": 0
+            }
+
+        # 重排序精排：开关开启 + 客户端存在 + 有有效召回结果时执行
+        if self.reranker and enable_rerank and filtered_results:
+            original_count = len(filtered_results)
+            actual_rerank_n = min(rerank_top_n, original_count)
+
+            # 执行重排序并埋点耗时
+            start_time = time.time()
+            filtered_results = self.reranker.rerank(
+                query=user_question,
+                documents=filtered_results,
+                top_n=actual_rerank_n
+            )
+            cost_ms = (time.time() - start_time) * 1000
+
+            logger.info(f"重排序完成：初筛{original_count}条 → 精排{len(filtered_results)}条，耗时{cost_ms:.0f}ms")
 
         # 拼接参考上下文
         context_blocks = []
@@ -124,10 +130,13 @@ class RagService:
         logger.info(f"RAG问答完成，命中{result['hit_count']}条片段")
         return result
 
-    def prepare_query_context(self, user_question: str, top_k: int = None,
-                         similarity_threshold: float = 0.0,
-                         collection_name: str = None,
-                         enable_rerank: bool = None, rerank_top_n: int = None):
+    def prepare_query_context(
+            self, 
+            user_question: str, 
+            top_k: int = None,
+            similarity_threshold: float = 0.0,
+            collection_name: str = None,
+            enable_rerank: bool = None, rerank_top_n: int = None):
         """同步执行检索、重排、Prompt组装，返回 (最终提示词, 过滤后结果列表)"""
         try:
             query_embedding = self.embedding_client.embed_single(user_question)
@@ -148,30 +157,31 @@ class RagService:
             search_results = self.vector_store.search(
                 query_embedding=query_embedding,
                 top_k=actual_top_k,
+                similarity_threshold=similarity_threshold,
                 collection_name=collection_name
             )
         except Exception as e:
             logger.error(f"向量检索执行失败，问题：{user_question}，错误：{str(e)}")
             raise VectorStoreError(f"检索失败：{str(e)}") from e
 
-        # 重排序精排
-        if self.reranker and enable_rerank and search_results:
-            original_count = len(search_results)
-            actual_rerank_n = min(rerank_top_n, original_count)
-            start_time = time.time()
-            search_results = self.reranker.rerank(
-                query=user_question,
-                documents=search_results,
-                top_n=actual_rerank_n
-            )
-            cost_ms = (time.time() - start_time) * 1000
-            logger.info(f"重排序完成：初筛{original_count}条 → 精排{len(search_results)}条，耗时{cost_ms:.0f}ms")
-
-        # 按相似度阈值过滤
+        # 相似度阈值过滤
         filtered_results = [
             doc for doc in search_results
             if doc.get("similarity", 0) >= similarity_threshold
         ]
+
+        # 重排序精排：仅当有有效结果时执行
+        if self.reranker and enable_rerank and filtered_results:
+            original_count = len(filtered_results)
+            actual_rerank_n = min(rerank_top_n, original_count)
+            start_time = time.time()
+            filtered_results = self.reranker.rerank(
+                query=user_question,
+                documents=filtered_results,
+                top_n=actual_rerank_n
+            )
+            cost_ms = (time.time() - start_time) * 1000
+            logger.info(f"重排序完成：初筛{original_count}条 → 精排{len(filtered_results)}条，耗时{cost_ms:.0f}ms")
 
         # 拼接参考上下文
         if not filtered_results:

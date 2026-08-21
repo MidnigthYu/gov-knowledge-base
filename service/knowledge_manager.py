@@ -19,7 +19,7 @@ class KnowledgeManager:
         self.splitter = TextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
         self.default_collection = vector_store.collection_name
 
-    def build_from_dir(self, input_dir: str) -> dict:
+    def build_from_dir(self, input_dir: str,  collection_name: str = None) -> dict:
         """从指定目录递归扫描所有 TXT 文件，批量构建知识库"""
         # 先校验目录合法性
         if not os.path.isdir(input_dir):
@@ -88,7 +88,12 @@ class KnowledgeManager:
         if total_chunks > 0:
             try:
                 embeddings = self.embedding_client.embed_batch(all_texts)
-                self.vector_store.add_documents(all_texts, embeddings, all_metadatas)
+                self.vector_store.add_documents(
+                    texts = all_texts, 
+                    embeddings = embeddings, 
+                    metadatas = all_metadatas,
+                    collection_name = collection_name
+                )
                 logger.info(f"批量入库完成，共 {total_chunks} 个文档分块")
             except EmbeddingError as e:
                 logger.error(f"批量向量化失败：{str(e)}")

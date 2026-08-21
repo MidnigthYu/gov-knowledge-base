@@ -12,10 +12,18 @@ class ZhipuEmbeddingClient(BaseEmbeddingClient):
     def __init__(self):
         super().__init__(dimension=settings.EMBEDDING_DIMENSION)
         self.api_key = settings.ZHIPU_API_KEY
-        self.base_url = settings.ZHIPU_BASE_URL.rstrip("/")
+        self.base_url = settings.ZHIPU_BASE_URL.strip().strip('"').strip("'").rstrip("/")
         self.model = settings.ZHIPU_EMBEDDING_MODEL
         self.batch_max = settings.EMBEDDING_BATCH_MAX
         self.timeout = settings.LLM_REQUEST_TIMEOUT
+
+    def embed(self, text: str) -> list[float]:
+        """统一嵌入接口，兼容上层业务调用"""
+        return self.embed_single(text)
+
+    def embed_query(self, text: str) -> list[float]:
+        """单条文本向量化，复用批量接口实现"""
+        return self.embed_batch([text])[0]
 
     def embed_single(self, text: str) -> list[float]:
         """单文本向量化，走基类校验后调用底层实现"""

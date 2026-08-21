@@ -16,7 +16,7 @@ router = APIRouter(
 def build_knowledge(req: BuildKnowledgeReq):
     from app.deps import kb_manager
     from app.schemas.response import ApiResponse
-    result = kb_manager.build_from_dir(req.docs_dir)
+    result = kb_manager.build_from_dir(req.docs_dir, collection_name=req.collection_name)
     return ApiResponse(data=result)
 
 @router.get("/list", summary="获取所有知识库列表")

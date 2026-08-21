@@ -3,6 +3,11 @@ from pydantic import BaseModel, Field
 
 class BuildKnowledgeReq(BaseModel):
     docs_dir: str = Field("./data/docs", min_length=1, description="待构建的本地文档目录路径")
+    collection_name: str = Field(
+        default=None,
+        pattern=r"^[a-zA-Z0-9_-]{2,64}$",
+        description="目标知识库名称，不传使用默认集合，仅允许字母、数字、下划线、短横线"
+    )
 
 class QueryReq(BaseModel):
     question: str = Field(..., min_length=1, max_length=500, description="用户查询问题")
