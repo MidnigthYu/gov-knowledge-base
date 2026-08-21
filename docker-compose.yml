@@ -1,0 +1,16 @@
+services:
+  gov-rag:
+    image: gov-knowledge-base:v2.0
+    container_name: gov-knowledge-base
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./temp_uploads:/app/temp_uploads
+      - ./logs:/app/logs
+      - ./tests:/app/tests
+    environment:
+      - TZ=Asia/Shanghai
+    env_file:
+      - .env

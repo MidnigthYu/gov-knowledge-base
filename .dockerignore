@@ -1,0 +1,53 @@
+# ===== Git 相关 =====
+.git
+.gitignore
+.github/
+
+# ===== 虚拟环境与 Python 缓存 =====
+venv/
+env/
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# ===== 密钥与本地配置 =====
+.env
+.env.local
+.local/
+
+# ===== 日志文件 =====
+logs/
+*.log
+
+# ===== IDE 与工具配置 =====
+.vscode/
+.idea/
+.claude/
+
+# ===== 测试与调试脚本 =====
+tests/test_files/
+# tests/
+scripts/
+smoke_rag.py
+demo_rag_qa.py
+
+# ===== 数据与临时文件 =====
+data/
+dataset/
+tmp/
+temp_uploads/
+.chroma/
+chroma_db/
+
+# ===== 系统临时文件 =====
+.DS_Store
+Thumbs.db
+
+# ===== 文档与说明文件 =====
+README.md
+*.md
+.dockerignore
