@@ -79,6 +79,20 @@
 7. 在线调试接口：浏览器访问 `http://127.0.0.1:8000/docs` 打开自动接口文档，可视化调试所有接口
 8. 体验流式问答：浏览器访问 `http://127.0.0.1:8000/chat.html` 打开对话页面，支持逐字输出与引用来源展示
 9. 启动可视化前端：`streamlit run web/app.py`
+10. **批量文档入库**：项目提供命令行批量入库工具，支持递归扫描目录下的文档，自动完成清洗、分块、向量化与入库。
+    - 入库到默认集合：
+      ```bash
+      python scripts/batch_build.py --dir data/docs
+      ```
+    - 指定目标集合：
+      ```bash
+      python scripts/batch_build.py --dir data/docs --collection gov_policy_base
+      ```
+
+11. **清理临时文件**：清理项目中所有 Python 编译缓存，避免旧缓存干扰运行。
+    ```powershell
+    Get-ChildItem -Recurse -Directory -Filter __pycache__ | Remove-Item -Recurse -Force
+    ```
 
 ### 容器化部署（Docker）
 支持一键容器化编排部署，代码与数据完全分离，适配政务内网离线私有化场景，镜像可独立导出交付，运行时无公网依赖。
