@@ -26,10 +26,14 @@ logs/
 # 测试数据、临时文件
 data/
 tmp/
-scripts/
 data/**/*.txt
 data/**/*.pdf
 data/**/*.docx
+scripts/debug_*.py
+scripts/smoke_*.py
+scripts/test_*.py
+scripts/*.json
+!scripts/batch_build.py
 
 # 单元测试配套数据文件
 tests/test_files/
