@@ -124,6 +124,10 @@
         const sendBtn = document.getElementById('sendBtn');
         const clearBtn = document.getElementById('clearBtn');
 
+        // 配置项
+        const STREAM_API = '/api/qa/stream';
+        const DEFAULT_COLLECTION = 'gov_policy_base';
+
         // 追加消息
         function appendMessage(role, content) {
             const msgDiv = document.createElement('div');
@@ -131,73 +135,113 @@
             const bubble = document.createElement('div');
             bubble.className = 'bubble';
             const contentEl = document.createElement('div');
-            contentEl.className = 'content';
-            contentEl.textContent = content;
+            contentEl.innerText = content;
             bubble.appendChild(contentEl);
             msgDiv.appendChild(bubble);
             chatContainer.appendChild(msgDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
-            return bubble;
+            return contentEl;
         }
 
-        // 渲染来源片段
-        function renderSources(bubbleEl, sources) {
-            if (!sources || sources.length === 0) return;
-            const sourcesDiv = document.createElement('div');
-            sourcesDiv.className = 'sources';
-            sourcesDiv.innerHTML = '<div style="font-weight: 600; margin-bottom: 8px;">引用来源</div>';
-            sources.forEach((item, index) => {
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'source-item';
-                itemDiv.innerHTML = `
-                    <div>${index + 1}. ${item.content}</div>
-                    <div class="source-score">相似度：${(item.score * 100).toFixed(1)}%</div>
-                `;
-                sourcesDiv.appendChild(itemDiv);
-            });
-            bubbleEl.appendChild(sourcesDiv);
-        }
-
-        // 发送问题
-        async function sendQuestion() {
+        // 发送流式问答请求
+        async function sendMessage() {
             const question = inputEl.value.trim();
             if (!question) return;
 
+            // 渲染用户消息
             appendMessage('user', question);
             inputEl.value = '';
             sendBtn.disabled = true;
+            inputEl.disabled = true;
 
-            const aiBubble = appendMessage('ai', '');
-            const contentEl = aiBubble.querySelector('.content');
+            // 渲染AI消息容器
+            const aiContentEl = appendMessage('assistant', '');
             let fullText = '';
+            let buffer = '';
 
-            streamRequest('/qa/stream', { question }, {
-                onContent: (delta) => {
-                    fullText += delta;
-                    contentEl.textContent = fullText;
-                    chatContainer.scrollTop = chatContainer.scrollHeight;
-                },
-                onSources: (sources) => {
-                    renderSources(aiBubble, sources);
-                    chatContainer.scrollTop = chatContainer.scrollHeight;
-                },
-                onDone: () => {
-                    sendBtn.disabled = false;
-                },
-                onError: (msg) => {
-                    contentEl.textContent = `请求失败：${msg}`;
-                    sendBtn.disabled = false;
+            try {
+                const res = await fetch(STREAM_API, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        question: question,
+                        collection_name: DEFAULT_COLLECTION
+                    })
+                });
+
+                if (!res.ok) throw new Error('请求失败，状态码：' + res.status);
+
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const events = buffer.split('\n\n');
+                    buffer = events.pop(); // 保留不完整事件块，解决流式粘包问题
+
+                    for (const eventStr of events) {
+                        if (!eventStr.trim()) continue;
+
+                        const lines = eventStr.split('\n');
+                        let eventType = 'message';
+                        let eventData = '';
+
+                        for (const line of lines) {
+                            if (line.startsWith('event: ')) {
+                                eventType = line.slice(7);
+                            } else if (line.startsWith('data: ')) {
+                                eventData = line.slice(6);
+                            }
+                        }
+
+                        switch (eventType) {
+                            case 'content':
+                                fullText += eventData;
+                                aiContentEl.innerText = fullText;
+                                chatContainer.scrollTop = chatContainer.scrollHeight;
+                                break;
+                            case 'sources':
+                                // 引用来源追加在回答末尾
+                                const sources = JSON.parse(eventData);
+                                const sourceDiv = document.createElement('div');
+                                sourceDiv.style.marginTop = '10px';
+                                sourceDiv.style.fontSize = '12px';
+                                sourceDiv.style.color = '#666';
+                                sourceDiv.innerText = '📄 引用来源：' + sources.length + '条';
+                                aiContentEl.parentNode.appendChild(sourceDiv);
+                                break;
+                            case 'done':
+                                break;
+                            case 'error':
+                                throw new Error(eventData || '流式响应异常');
+                        }
+                    }
                 }
-            });
+            } catch (err) {
+                aiContentEl.innerText = '请求出错：' + err.message;
+            } finally {
+                sendBtn.disabled = false;
+                inputEl.disabled = false;
+                inputEl.focus();
+            }
         }
 
-        // 事件绑定
-        sendBtn.addEventListener('click', sendQuestion);
-        inputEl.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') sendQuestion();
-        });
-        clearBtn.addEventListener('click', () => {
+        // 清空对话
+        function clearChat() {
             chatContainer.innerHTML = '';
+        }
+
+        // 绑定交互事件
+        sendBtn.addEventListener('click', sendMessage);
+        clearBtn.addEventListener('click', clearChat);
+        inputEl.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
         });
     </script>
 </body>

@@ -46,11 +46,14 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# 业务接口路由
 app.include_router(health.router)
 app.include_router(knowledge.router)
 app.include_router(qa.router)
-# 挂载前端静态资源目录
-web_dir = os.path.join(os.path.dirname(__file__), "..", "web")
+
+# 静态目录转为绝对路径
+web_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "web"))
+logger.info(f"静态资源目录: {web_dir}")
 app.mount("/", StaticFiles(directory=web_dir, html=True), name="web_static")
 
 # 全局异常处理
