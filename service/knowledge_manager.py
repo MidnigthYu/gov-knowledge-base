@@ -124,12 +124,11 @@ class KnowledgeManager:
         self.vector_store.delete_collection(collection_name)
         logger.info(f"知识库 [{collection_name}] 删除成功")
 
-    def add_single_document(self, file_path: str, collection_name: str = None) -> int:
+    def add_single_document(self, file_path: str, collection_name: str = None, extra_metadata: dict = None) -> int:
         """单文档增量入库，处理逻辑与批量构建完全对齐"""
         target_collection = collection_name or self.default_collection
 
         try:
-            # 文档读取 + 文本清洗
             raw_text = safe_read_file(file_path)
             clean_text = clean_single_text(raw_text)
 
@@ -160,6 +159,10 @@ class KnowledgeManager:
 
             if not all_texts:
                 return 0
+
+            if extra_metadata:
+                for meta in all_metadatas:
+                    meta.update(extra_metadata)
 
         except Exception as e:
             raise DocumentParseError(f"文档解析失败: {str(e)}") from e
