@@ -1,3 +1,8 @@
+"""
+全量回归测试
+基于 FastAPI TestClient 端到端验证知识库构建、召回命中、重排序、低相关兜底与边界异常等场景
+依赖：pytest、TestClient、app.main
+"""
 import pytest, uuid
 from fastapi.testclient import TestClient
 from app.main import app

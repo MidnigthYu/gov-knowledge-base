@@ -2,7 +2,7 @@
 requests>=2.32.0,<3.0.0
 
 # 环境变量读取
-python-dotenv==1.0.0
+python-dotenv>=1.0.1,<2.0.0
 
 # 编码检测
 chardet==5.2.0
@@ -10,7 +10,7 @@ chardet==5.2.0
 # 向量数据库
 chromadb==1.5.9
 
-# # API服务框架1
+# API服务框架
 fastapi==0.141.1
 uvicorn==0.52.1
 

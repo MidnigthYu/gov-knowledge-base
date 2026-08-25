@@ -1,3 +1,8 @@
+"""
+重排序效果评测脚本
+基于固定评测数据集，对比重排序开关与不同粗召回/精排参数下的 Top1/Top3 命中率与平均耗时
+依赖：ChromaVectorStore、ZhipuEmbeddingClient、ZhipuReranker、EVAL_DATASET
+"""
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -5,11 +10,11 @@ sys.stdout.reconfigure(encoding="utf-8")
 sys.stderr.reconfigure(encoding="utf-8")
 
 import time
-from config.settings import settings
-from vector_store.chroma_store import ChromaVectorStore
-from client.zhipu_embedding_client import ZhipuEmbeddingClient
-from client.zhipu_reranker import ZhipuReranker
-from dataset.policy_eval_set import EVAL_DATASET
+from app.config.settings import settings
+from app.vector_store.chroma_store import ChromaVectorStore
+from app.client.zhipu_embedding_client import ZhipuEmbeddingClient
+from app.client.zhipu_reranker import ZhipuReranker
+from app.dataset.policy_eval_set import EVAL_DATASET
 
 
 # 全局只初始化一次客户端，避免重复创建

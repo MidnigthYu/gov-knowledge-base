@@ -1,3 +1,8 @@
+"""
+批量文档入库命令行工具
+递归扫描指定目录下的 TXT 文档，支持增量更新与基于 MD5 指纹的重复文档跳过，执行清洗、分块、向量化、入库全流程
+依赖：KnowledgeManager、ZhipuEmbeddingClient、ChromaVectorStore、app.config.settings
+"""
 import os
 import sys
 import argparse
@@ -6,11 +11,11 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from config.settings import settings
-from client.zhipu_embedding_client import ZhipuEmbeddingClient
-from vector_store.chroma_store import ChromaVectorStore
-from service.knowledge_manager import KnowledgeManager
-from common.logger import get_logger
+from app.config.settings import settings
+from app.client.zhipu_embedding_client import ZhipuEmbeddingClient
+from app.vector_store.chroma_store import ChromaVectorStore
+from app.service.knowledge_manager import KnowledgeManager
+from app.common.logger import get_logger
 
 logger = get_logger(__name__)
 

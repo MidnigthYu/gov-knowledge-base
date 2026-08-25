@@ -1,5 +1,10 @@
+"""
+文本分块器单元测试
+覆盖正常切分、重叠区间、短文本、空输入与元数据正确性等场景
+依赖：unittest、TextSplitter
+"""
 import unittest
-from utils.text_splitter import TextSplitter
+from app.utils.text_splitter import TextSplitter
 
 class TestTextSplitter(unittest.TestCase):
 

@@ -1,7 +1,12 @@
+"""
+智谱重排序客户端单元测试
+以 Mock 网络请求，验证空输入、正常解析、异常封装与缺元数据安全处理
+依赖：unittest、ZhipuReranker
+"""
 import unittest
 from unittest.mock import patch, MagicMock
-from client.zhipu_reranker import ZhipuReranker
-from common.exceptions import RerankError
+from app.client.zhipu_reranker import ZhipuReranker
+from app.common.exceptions import RerankError
 
 class TestZhipuReranker(unittest.TestCase):
     """智谱重排序客户端单元测试"""
@@ -18,7 +23,7 @@ class TestZhipuReranker(unittest.TestCase):
         result = self.reranker.rerank("测试问题", [])
         self.assertEqual(result, [])
 
-    @patch("client.zhipu_reranker.requests.post")
+    @patch("app.client.zhipu_reranker.requests.post")
     def test_normal_rerank_return_structured_result(self, mock_post):
         """正常调用时，正确解析返回结果并还原元数据"""
         # 模拟接口返回
@@ -47,7 +52,7 @@ class TestZhipuReranker(unittest.TestCase):
         self.assertEqual(call_args.kwargs["json"]["model"], self.reranker.model)
         self.assertEqual(call_args.kwargs["json"]["top_n"], 2)
 
-    @patch("client.zhipu_reranker.requests.post")
+    @patch("app.client.zhipu_reranker.requests.post")
     def test_api_error_raise_rerank_error(self, mock_post):
         """接口调用异常时，封装抛出 RerankError"""
         # 模拟网络异常
@@ -56,7 +61,7 @@ class TestZhipuReranker(unittest.TestCase):
         with self.assertRaises(RerankError):
             self.reranker.rerank("测试问题", self.test_docs)
 
-    @patch("client.zhipu_reranker.requests.post")
+    @patch("app.client.zhipu_reranker.requests.post")
     def test_missing_metadata_safe_handle(self, mock_post):
         """输入缺少 metadata 字段时，安全处理不报错"""
         mock_response = MagicMock()

@@ -1,5 +1,10 @@
+"""
+Chroma 向量库单元测试
+验证文档入库计数、检索返回格式、空检索与集合删除等核心行为
+依赖：unittest、ChromaVectorStore
+"""
 import unittest
-from vector_store import ChromaVectorStore
+from app.vector_store import ChromaVectorStore
 
 class TestChromaStore(unittest.TestCase):
 

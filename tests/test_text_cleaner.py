@@ -1,7 +1,12 @@
+"""
+文本清洗工具单元测试
+覆盖空行去除、特殊字符过滤、空白规范化、编码检测读取与批量清洗等场景
+依赖：unittest、text_cleaner
+"""
 import unittest
 import os
 import tempfile
-from utils.text_cleaner import clean_single_text, safe_read_file, batch_clean_files
+from app.utils.text_cleaner import clean_single_text, safe_read_file, batch_clean_files
 
 
 class TestCleanSingleText(unittest.TestCase):

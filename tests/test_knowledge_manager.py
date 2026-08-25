@@ -1,8 +1,13 @@
+"""
+知识库管理服务单元测试
+以 Mock 嵌入与向量库依赖，验证空目录、正常构建与异常文件隔离等场景
+依赖：unittest、KnowledgeManager
+"""
 import unittest
 import os
 import tempfile
 from unittest.mock import MagicMock
-from service.knowledge_manager import KnowledgeManager
+from app.service.knowledge_manager import KnowledgeManager
 
 class TestKnowledgeManager(unittest.TestCase):
     """知识库批量管理单元测试"""

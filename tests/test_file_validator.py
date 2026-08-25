@@ -1,5 +1,10 @@
+"""
+文件校验工具单元测试
+覆盖合法/非法扩展名、大小超限、空文件与大小写扩展名等边界场景
+依赖：pytest、validate_file
+"""
 import pytest
-from utils.file_validator import validate_file, ALLOWED_EXTENSIONS
+from app.utils.file_validator import validate_file, ALLOWED_EXTENSIONS
 
 
 def test_allowed_extensions_pass():

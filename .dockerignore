@@ -28,16 +28,17 @@ logs/
 .idea/
 .claude/
 
-# ===== 测试与调试脚本 =====
-tests/test_files/
-# tests/
-scripts/
-smoke_rag.py
-demo_rag_qa.py
+# ===== 测试与调试脚本（保留核心工具）=====
+tests/
+scripts/debug_*.py
+scripts/smoke_*.py
+scripts/test_*.py
+scripts/*.json
 
-# ===== 数据与临时文件 =====
-data/
-dataset/
+# ===== 运行时生成数据（保留示例文档）=====
+data/chroma/
+data/input/
+data/output/
 tmp/
 temp_uploads/
 .chroma/
@@ -47,7 +48,5 @@ chroma_db/
 .DS_Store
 Thumbs.db
 
-# ===== 文档与说明文件 =====
-README.md
-*.md
+# ===== 自身配置文件 =====
 .dockerignore

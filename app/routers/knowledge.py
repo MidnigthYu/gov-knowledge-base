@@ -1,10 +1,15 @@
+"""
+知识库管理路由模块
+提供批量构建、列表查询、单文档增量入库、知识库删除与文件上传入库等管理接口
+依赖：verify_api_key 鉴权、KnowledgeManager、GovRAGBaseError、ApiResponse
+"""
 import os
 import time
 from pathlib import Path
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 from app.schemas.request import BuildKnowledgeReq, AddDocumentReq
-from common.auth import verify_api_key
-from config.settings import get_settings
+from app.common.auth import verify_api_key
+from app.config.settings import get_settings
 
 router = APIRouter(
     prefix="/api/knowledge",
@@ -14,6 +19,7 @@ router = APIRouter(
 
 @router.post("/build", summary="批量构建知识库")
 def build_knowledge(req: BuildKnowledgeReq):
+    """按目录批量构建知识库，返回构建统计结果"""
     from app.deps import kb_manager
     from app.schemas.response import ApiResponse
     result = kb_manager.build_from_dir(req.docs_dir, collection_name=req.collection_name)
@@ -21,6 +27,7 @@ def build_knowledge(req: BuildKnowledgeReq):
 
 @router.get("/list", summary="获取所有知识库列表")
 def list_knowledge_bases():
+    """获取所有已存在的知识库集合名称列表"""
     from app.deps import kb_manager
     from app.schemas.response import ApiResponse
     collections = kb_manager.list_knowledge_bases()
@@ -28,6 +35,7 @@ def list_knowledge_bases():
 
 @router.post("/add-document", summary="单文档增量入库")
 def add_single_document(req: AddDocumentReq):
+    """将单个本地文档增量入库，返回新增分块数量"""
     from app.deps import kb_manager
     from app.schemas.response import ApiResponse
     chunk_count = kb_manager.add_single_document(
@@ -38,6 +46,7 @@ def add_single_document(req: AddDocumentReq):
 
 @router.delete("/{collection_name}", summary="删除指定知识库")
 def delete_knowledge_base(collection_name: str):
+    """删除指定名称的知识库集合"""
     from app.deps import kb_manager
     from app.schemas.response import ApiResponse
     kb_manager.delete_knowledge_base(collection_name)
@@ -49,9 +58,10 @@ async def upload_document(
     collection_name: str = Form(None),
     settings = Depends(get_settings)
 ):
+    """接收上传文件并增量入库，内置格式/大小/空内容三重校验与临时文件兜底清理"""
     from app.deps import kb_manager
     from app.schemas.response import ApiResponse
-    from common.exceptions import ErrorCode, GovRAGBaseError
+    from app.common.exceptions import ErrorCode, GovRAGBaseError
 
     # 文件格式白名单校验
     file_suffix = Path(file.filename).suffix.lower()

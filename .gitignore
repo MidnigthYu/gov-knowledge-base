@@ -24,23 +24,30 @@ logs/
 .claude/
 
 # 测试数据、临时文件
-data/
 tmp/
-data/**/*.txt
-data/**/*.pdf
-data/**/*.docx
+temp_uploads/
+
+# 调试脚本
 scripts/debug_*.py
 scripts/smoke_*.py
 scripts/test_*.py
 scripts/*.json
 !scripts/batch_build.py
+!scripts/batch_import.py
 
 # 单元测试配套数据文件
 tests/test_files/
 
-# 向量库持久化数据
-data/
-*.chroma/
+# 向量库持久化数据 + 临时目录
+data/chroma/
+data/input/
+data/output/
 
-# 文件上传临时目录
-temp_uploads/
+# 打包与分发
+dist/
+build/
+*.egg-info/
+
+# 系统文件
+.DS_Store
+Thumbs.db

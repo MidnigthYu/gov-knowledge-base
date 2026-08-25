@@ -1,3 +1,8 @@
+"""
+政务知识库 RAG 系统 FastAPI 应用入口
+负责服务生命周期编排、路由注册、静态资源挂载与全局异常处理，构建标准化的统一响应出口
+依赖：deps（全局服务单例）、health/knowledge/qa 路由、ResponseUtil、GovRAGBaseError
+"""
 from app.routers import health, knowledge, qa
 from app import deps
 from contextlib import asynccontextmanager
@@ -8,15 +13,15 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 import os
 
-from config.settings import settings
-from client.zhipu_client import ZhipuClient
-from client.zhipu_embedding_client import ZhipuEmbeddingClient
-from vector_store.chroma_store import ChromaVectorStore
-from service.knowledge_manager import KnowledgeManager
-from service.rag_service import RagService
-from common.exceptions import GovRAGBaseError, ErrorCode
-from common.response import ResponseUtil
-from common.logger import get_logger
+from app.config.settings import settings
+from app.client.zhipu_client import ZhipuClient
+from app.client.zhipu_embedding_client import ZhipuEmbeddingClient
+from app.vector_store.chroma_store import ChromaVectorStore
+from app.service.knowledge_manager import KnowledgeManager
+from app.service.rag_service import RagService
+from app.common.exceptions import GovRAGBaseError, ErrorCode
+from app.common.response import ResponseUtil
+from app.common.logger import get_logger
 
 logger = get_logger(__name__)
 

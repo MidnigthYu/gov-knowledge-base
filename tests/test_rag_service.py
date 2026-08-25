@@ -1,7 +1,12 @@
+"""
+RAG 问答服务单元测试
+以 Mock 全部底层依赖，验证零召回兜底、结构化返回、异常封装与重排序开关等场景
+依赖：unittest、RagService
+"""
 import unittest
 from unittest.mock import MagicMock
-from service.rag_service import RagService
-from common.exceptions import LLMAPIError, VectorStoreError
+from app.service.rag_service import RagService
+from app.common.exceptions import LLMAPIError, VectorStoreError
 
 class TestRagService(unittest.TestCase):
     """RAG 问答服务单元测试"""
