@@ -1,6 +1,5 @@
 services:
   gov-rag:
-    build: .
     image: gov-knowledge-base:v2.1
     container_name: gov-knowledge-base
     restart: unless-stopped
