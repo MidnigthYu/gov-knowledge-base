@@ -3,7 +3,7 @@ RAG 问答核心服务模块
 串联向量检索、重排序、Prompt 组装、大模型生成全链路，对外提供同步/流式两类标准化问答接口，内置会话管理与问题改写能力
 依赖：ZhipuReranker、EmbeddingError、VectorStoreError、LLMAPIError、app.config.settings
 """
-import time, json
+import time
 from app.client.zhipu_reranker import ZhipuReranker
 from app.common.logger import get_logger
 from app.common.exceptions import LLMAPIError, VectorStoreError, EmbeddingError
@@ -26,7 +26,7 @@ class RagService:
     提供同步 query、流式 stream_query 两类对外接口，内置会话管理与问题改写能力
     """
 
-    def __init__(self, vector_store, llm_client, embedding_client, top_k: int = None):
+    def __init__(self, vector_store, llm_client, embedding_client, top_k: int = None, similarity_threshold: float = None):
         """依赖注入初始化
 
         Args:
@@ -39,6 +39,7 @@ class RagService:
         self.llm_client = llm_client
         self.embedding_client = embedding_client
         self.top_k = top_k if top_k is not None else settings.RAG_DEFAULT_TOP_K
+        self.similarity_threshold = similarity_threshold if similarity_threshold is not None else settings.SIMILARITY_THRESHOLD
         self.reranker = ZhipuReranker() if settings.RERANK_ENABLE else None
 
         self.system_prompt_template = """你是专业的政务政策咨询助手，请严格遵守以下规则：
@@ -105,6 +106,18 @@ class RagService:
                 history_text += f"助手：{msg['content']}\n"
         return history_text
 
+    def _dedup_docs(self, docs: List[dict]) -> List[dict]:
+        """按内容指纹对检索结果去重，过滤同一文档的相邻重复片段"""
+        seen = set()
+        unique_docs = []
+        for doc in docs:
+            # 取正文前60个非空字符作为内容指纹，过滤高度重复的相邻切片
+            content_fp = doc["content"].strip()[:60]
+            if content_fp not in seen:
+                seen.add(content_fp)
+                unique_docs.append(doc)
+        return unique_docs
+
     def _rewrite_query(self, current_question: str, history: List[Dict[str, str]]) -> str:
         """结合对话历史改写用户问题，补全省略的指代信息，用于提升检索准确率"""
         if not history:
@@ -140,7 +153,7 @@ class RagService:
             self.llm_client.messages = original_messages
 
     def query(self, user_question: str, top_k: int = None,
-            similarity_threshold: float = 0.0,
+            similarity_threshold: float = None,
             return_sources: bool = True,
             collection_name: str = None,
             enable_rerank: bool = None,
@@ -187,20 +200,24 @@ class RagService:
         actual_top_k = top_k
         if actual_top_k is None:
             actual_top_k = settings.RECALL_TOP_K if enable_rerank else self.top_k
+        
+        # 相似度阈值兜底
+        actual_threshold = similarity_threshold if similarity_threshold is not None else self.similarity_threshold
 
         # 执行向量相似度检索
         try:
             search_results = self.vector_store.search(
                 query_embedding=query_embedding,
                 top_k=actual_top_k,
-                similarity_threshold=similarity_threshold,
+                similarity_threshold=actual_threshold,
                 collection_name=collection_name
             )
         except Exception as e:
             logger.error(f"向量检索执行失败, 问题: {user_question}, 错误: {str(e)}")
             raise VectorStoreError(f"检索失败: {str(e)}") from e
 
-        filtered_results = search_results
+        # 召回结果按内容去重
+        filtered_results = self._dedup_docs(search_results)
 
         if not filtered_results:
             empty_answer = "抱歉，暂无与该问题相关的政策信息。"
@@ -266,7 +283,7 @@ class RagService:
             self, 
             user_question: str, 
             top_k: int = None,
-            similarity_threshold: float = 0.0,
+            similarity_threshold: float = None,
             collection_name: str = None,
             enable_rerank: bool = None, 
             rerank_top_n: int = None,
@@ -309,18 +326,22 @@ class RagService:
         if actual_top_k is None:
             actual_top_k = settings.RECALL_TOP_K if enable_rerank else self.top_k
 
+        # 相似度阈值兜底
+        actual_threshold = similarity_threshold if similarity_threshold is not None else self.similarity_threshold
+
         try:
             search_results = self.vector_store.search(
                 query_embedding=query_embedding,
                 top_k=actual_top_k,
-                similarity_threshold=similarity_threshold,
+                similarity_threshold=actual_threshold,
                 collection_name=collection_name
             )
         except Exception as e:
             logger.error(f"向量检索执行失败，问题：{user_question}，错误：{str(e)}")
             raise VectorStoreError(f"检索失败：{str(e)}") from e
 
-        filtered_results = search_results
+        # 召回结果按内容去重
+        filtered_results = self._dedup_docs(search_results)
 
         if self.reranker and enable_rerank and filtered_results:
             original_count = len(filtered_results)
@@ -354,7 +375,7 @@ class RagService:
             self,
             user_question: str,
             top_k: int = None,
-            similarity_threshold: float = 0.0,
+            similarity_threshold: float = None,
             return_sources: bool = True,
             collection_name: str = None,
             enable_rerank: bool = None,
@@ -367,7 +388,7 @@ class RagService:
         Args:
             user_question: 用户原始问题文本
             top_k: 召回片段数量，缺省按是否启用重排序取 RECALL_TOP_K 或默认值
-            similarity_threshold: 相似度过滤阈值，未指定时兜底为 0.5
+            similarity_threshold: 相似度过滤阈值，未指定时取全局配置
             return_sources: 是否返回来源片段
             collection_name: 目标知识库名称，缺省使用默认集合
             enable_rerank: 是否启用重排序，缺省取配置
@@ -384,9 +405,9 @@ class RagService:
         history = self._get_session_history(session_id)
 
         try:
-            # 相似度阈值兜底：未指定时使用 0.5 默认值，过滤低质量无关召回
-            if similarity_threshold <= 0:
-                similarity_threshold = 0.5
+            # 相似度阈值兜底：未指定时使用全局配置，过滤低质量无关召回
+            if similarity_threshold is None or similarity_threshold <= 0:
+                similarity_threshold = settings.SIMILARITY_THRESHOLD
 
             #  执行检索、重排、Prompt组装
             final_prompt, filtered_results = self.prepare_query_context(

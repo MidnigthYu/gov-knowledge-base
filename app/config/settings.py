@@ -46,6 +46,7 @@ class Settings:
         
         # RAG配置
         self.RAG_DEFAULT_TOP_K: int = int (os.getenv("RAG_DEFAULT_TOP_K", "3"))
+        self.SIMILARITY_THRESHOLD: float = float(os.getenv("SIMILARITY_THRESHOLD", "0.6"))
 
         # API 服务配置
         self.SERVER_HOST = os.getenv("SERVER_HOST", "0.0.0.0")

@@ -74,11 +74,24 @@ async def handle_business_exception(_: Request, exc: GovRAGBaseError):
 @app.exception_handler(RequestValidationError)
 async def handle_validation_exception(_: Request, exc: RequestValidationError):
     """统一捕获参数校验异常，对齐标准格式"""
+    # 完整错误详情仅记录日志，不对外暴露
     logger.warning(f"参数校验失败: {exc.errors()}")
+    
+    # 提取第一个错误，拼成友好提示
+    first_err = exc.errors()[0]
+    err_field = ".".join([str(x) for x in first_err["loc"]])
+    err_msg = first_err["msg"]
+    
+    # 直接构造三层标准响应，不传入detail
     return JSONResponse(
         status_code=400,
-        content=ResponseUtil.error(ErrorCode.PARAM_INVALID, detail=str(exc.errors()))
+        content={
+            "code": ErrorCode.PARAM_INVALID.code,
+            "message": f"{err_field} {err_msg}",
+            "data": None
+        }
     )
+
 
 @app.exception_handler(StarletteHTTPException)
 async def handle_http_exception(request: Request, exc: StarletteHTTPException):

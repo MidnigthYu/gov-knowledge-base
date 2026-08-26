@@ -19,7 +19,7 @@ class QueryReq(BaseModel):
     """RAG 问答请求体，携带检索、重排序与会话相关配置"""
     question: str = Field(..., min_length=1, max_length=500, description="用户查询问题")
     top_k: int = Field(default=None, ge=1, le=20, description="召回片段数量，不传使用系统默认值")
-    similarity_threshold: float = Field(default=0.0, ge=0.0, le=1.0, description="相似度过滤阈值，0-1之间")
+    similarity_threshold: float = Field(default=None, ge=0.0, le=1.0, description="相似度过滤阈值，不传使用系统默认值，0-1之间")
     return_sources: bool = Field(default=True, description="是否返回原文来源片段")
     session_id: Optional[str] = Field(
         default=None,
