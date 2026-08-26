@@ -1,6 +1,6 @@
 """
 批量文档入库命令行工具
-递归扫描指定目录下的 TXT 文档，支持增量更新与基于 MD5 指纹的重复文档跳过，执行清洗、分块、向量化、入库全流程
+递归扫描指定目录下的 TXT/PDF/DOCX 文档，支持增量更新与基于 MD5 指纹的重复文档跳过，执行清洗、分块、向量化、入库全流程
 依赖：KnowledgeManager、ZhipuEmbeddingClient、ChromaVectorStore、app.config.settings
 """
 import os
@@ -19,6 +19,10 @@ from app.common.logger import get_logger
 
 logger = get_logger(__name__)
 
+# 支持的文档格式
+SUPPORTED_EXT = {".txt", ".pdf", ".docx"}
+
+
 def calculate_file_md5(file_path: str) -> str:
     """计算文件MD5指纹，基于二进制内容生成唯一标识"""
     hash_md5 = hashlib.md5()
@@ -26,6 +30,59 @@ def calculate_file_md5(file_path: str) -> str:
         for chunk in iter(lambda: f.read(4096), b""):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
+
+
+def parse_docx(file_path: str) -> str:
+    """纯Python解析Word文档，不依赖lxml，避开DLL拦截"""
+    import zipfile
+    import xml.etree.ElementTree as ET
+    
+    # docx 本质是 zip 包，正文在 word/document.xml 中
+    word_namespace = '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
+    text_tag = word_namespace + 't'
+    para_tag = word_namespace + 'p'
+    
+    try:
+        with zipfile.ZipFile(file_path, 'r') as zip_file:
+            with zip_file.open('word/document.xml') as xml_file:
+                tree = ET.parse(xml_file)
+                root = tree.getroot()
+        
+        paragraphs = []
+        # 遍历所有段落，拼接文本
+        for para in root.iter(para_tag):
+            para_text = []
+            for text_node in para.iter(text_tag):
+                if text_node.text:
+                    para_text.append(text_node.text)
+            if para_text:
+                paragraphs.append(''.join(para_text))
+        
+        return '\n'.join(paragraphs)
+    
+    except Exception as e:
+        logger.error(f"docx 解析失败 {file_path}: {e}")
+        return ""
+
+
+def parse_pdf(file_path: str) -> str:
+    """解析 PDF 文档文本内容"""
+    try:
+        from PyPDF2 import PdfReader
+    except ImportError:
+        logger.warning("未安装 PyPDF2 依赖，跳过 pdf 文档解析")
+        return ""
+    try:
+        reader = PdfReader(file_path)
+        text_list = []
+        for page in reader.pages:
+            page_text = page.extract_text()
+            if page_text:
+                text_list.append(page_text)
+        return "\n".join(text_list)
+    except Exception as e:
+        logger.error(f"pdf 解析失败 {file_path}: {e}")
+        return ""
 
 
 def init_kb_manager(collection_name: str = None) -> tuple[KnowledgeManager, ChromaVectorStore]:
@@ -57,12 +114,13 @@ def get_existing_file_md5s(vector_store: ChromaVectorStore) -> set:
         return set()
 
 
-def scan_txt_files(dir_path: str) -> list[str]:
-    """递归扫描目录下所有 .txt 文档，与现有KnowledgeManager能力对齐"""
+def scan_supported_files(dir_path: str) -> list[str]:
+    """递归扫描目录下所有支持格式的文档"""
     file_list = []
     for root, _, files in os.walk(dir_path):
         for file in files:
-            if file.lower().endswith(".txt"):
+            ext = os.path.splitext(file)[1].lower()
+            if ext in SUPPORTED_EXT:
                 file_list.append(os.path.join(root, file))
     return file_list
 
@@ -80,6 +138,18 @@ def main():
         help="目标知识库集合名称，不传则使用环境配置中的默认集合"
     )
     parser.add_argument(
+        "--chunk-size",
+        type=int,
+        default=500,
+        help="文档切片大小（字符数），默认 500"
+    )
+    parser.add_argument(
+        "--overlap",
+        type=int,
+        default=50,
+        help="切片重叠量（字符数），默认 50"
+    )
+    parser.add_argument(
         "--force",
         action="store_true",
         help="强制全量重建，跳过去重校验，重新入库所有文档"
@@ -93,6 +163,8 @@ def main():
     print(f"批量入库启动")
     print(f"文档目录: {abs_dir}")
     print(f"目标集合: {target_collection}")
+    print(f"切片大小: {args.chunk_size} 字符")
+    print(f"切片重叠: {args.overlap} 字符")
     print(f"强制重建: {'开启' if args.force else '关闭'}")
     print("=" * 50)
 
@@ -101,11 +173,11 @@ def main():
     added_count = 0
     skipped_count = 0
     failed_count = 0
+    total_chunks = 0
 
     try:
         kb_manager, vector_store = init_kb_manager(args.collection)
-
-        file_list = scan_txt_files(abs_dir)
+        file_list = scan_supported_files(abs_dir)
         total_files = len(file_list)
         print(f"\n共扫描到有效文档: {total_files} 个")
 
@@ -117,25 +189,27 @@ def main():
 
         # 逐文件判重、入库
         for file_path in file_list:
-            file_md5 = calculate_file_md5(file_path)
-
-            if not args.force and file_md5 in existing_md5s:
-                skipped_count += 1
-                print(f"[跳过] 文档已存在: {os.path.basename(file_path)}")
-                continue
-
+            file_name = os.path.basename(file_path)
             try:
+                file_md5 = calculate_file_md5(file_path)
+                if not args.force and file_md5 in existing_md5s:
+                    skipped_count += 1
+                    print(f"[跳过] 文档已存在: {file_name}")
+                    continue
+
                 chunk_num = kb_manager.add_single_document(
                     file_path=file_path,
                     collection_name=target_collection,
                     extra_metadata={"file_md5": file_md5}
                 )
                 added_count += 1
-                print(f"[入库成功] {os.path.basename(file_path)} | 分块数: {chunk_num}")
+                total_chunks += chunk_num
+                print(f"[入库成功] {file_name} | 分块数: {chunk_num}")
+
             except Exception as e:
                 failed_count += 1
                 logger.error(f"文档入库失败 {file_path}: {e}")
-                print(f"[入库失败] {os.path.basename(file_path)}: {str(e)}")
+                print(f"[入库失败] {file_name}: {str(e)}")
 
         cost_time = round(time.time() - start_time, 2)
         print("\n" + "=" * 50)
@@ -144,6 +218,7 @@ def main():
         print(f"新增入库: {added_count}")
         print(f"跳过重复: {skipped_count}")
         print(f"入库失败: {failed_count}")
+        print(f"生成总切片数: {total_chunks}")
         print("=" * 50)
 
     except Exception as e:
