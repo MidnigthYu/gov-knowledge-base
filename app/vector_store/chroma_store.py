@@ -82,7 +82,8 @@ class ChromaVectorStore(BaseVectorStore):
 
         # 动态获取目标集合
         target_name = collection_name if collection_name else self.collection_name
-        target_collection = self.client.get_or_create_collection(target_name, metadata={"app": "gov-rag"})
+        target_collection = self.client.get_or_create_collection(target_name, metadata={"hnsw:space": "cosine", "app": "gov-rag"})
+
 
         try:
             doc_ids = ids or [str(uuid.uuid4()) for _ in texts]
