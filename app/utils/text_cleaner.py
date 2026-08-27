@@ -12,7 +12,7 @@ from app.common.logger import get_logger
 logger = get_logger("text_cleaner")
 
 # 批量清洗支持的文件扩展名
-SUPPORTED_EXTENSIONS = {".txt"}
+SUPPORTED_EXTENSIONS = {".txt", ".md", ".pdf", ".docx"}
 # 编码检测采样字节数
 DETECT_SAMPLE_BYTES = 1024
 # 编码检测置信度阈值，低于该值进入兜底编码列表

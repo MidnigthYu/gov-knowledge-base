@@ -6,7 +6,7 @@
 from pathlib import Path
 
 # 允许入库的文件扩展名白名单
-ALLOWED_EXTENSIONS = {".txt", ".md"}
+ALLOWED_EXTENSIONS = {".txt", ".md", ".pdf", ".docx"}
 
 # 默认最大文件大小 10MB
 DEFAULT_MAX_SIZE = 10 * 1024 * 1024

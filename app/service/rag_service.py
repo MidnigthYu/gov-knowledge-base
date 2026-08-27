@@ -405,11 +405,8 @@ class RagService:
         history = self._get_session_history(session_id)
 
         try:
-            # 相似度阈值兜底：未指定时使用全局配置，过滤低质量无关召回
-            if similarity_threshold is None or similarity_threshold <= 0:
-                similarity_threshold = settings.SIMILARITY_THRESHOLD
-
-            #  执行检索、重排、Prompt组装
+            # 阈值兜底统一交由 prepare_query_context 处理（None → 全局默认；显式传 0 → 不过滤），
+            # 与同步接口 query 保持一致，避免前端传 0 意图“不过滤”却被强制覆盖为高阈值导致零命中
             final_prompt, filtered_results = self.prepare_query_context(
                 user_question=user_question,
                 top_k=top_k,
@@ -442,7 +439,7 @@ class RagService:
             self.llm_client.clear_history()
             self.llm_client.messages[0]["content"] = final_prompt
 
-            for chunk in self.llm_client.stream_chat(prompt=user_question):
+            for chunk in self.llm_client.chat_stream(prompt=user_question):
                 full_answer += chunk
                 yield {"type": "content", "data": chunk}
 
