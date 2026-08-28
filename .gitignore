@@ -5,14 +5,17 @@ env/
 
 # 密钥与本地配置
 .env
+.env.*
 .local/
 
 # Python缓存
-__pycache__/
-.pytest_cache/
+**/__pycache__/
+**/.pytest_cache/
+**/.mypy_cache/
 *.pyc
 *.pyo
 *.pyd
+.coverage
 
 # 日志文件
 logs/
@@ -32,6 +35,7 @@ scripts/debug_*.py
 scripts/smoke_*.py
 scripts/test_*.py
 scripts/*.json
+tests/test_format_parser.py
 !scripts/batch_build.py
 !scripts/batch_import.py
 
@@ -40,13 +44,20 @@ tests/test_files/
 
 # 向量库持久化数据 + 临时目录
 data/chroma/
+.chroma/
+chroma_db/
 data/input/
 data/output/
+# 排除 docs 目录下所有格式的政务文档
+data/docs/*.pdf
+data/docs/*.docx
+data/docs/*.txt
 
 # 打包与分发
 dist/
 build/
 *.egg-info/
+*.egg
 
 # 系统文件
 .DS_Store

@@ -15,4 +15,10 @@ COPY . .
 
 EXPOSE 8000
 
+RUN groupadd -r -g 1000 appgroup && useradd -r -u 1000 -g appgroup -M -s /sbin/nologin appuser
+
+RUN chown -R appuser:appgroup /app
+
+USER appuser
+
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
