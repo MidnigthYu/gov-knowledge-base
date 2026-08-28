@@ -25,6 +25,18 @@ def ask_question(question, collection_name, enable_rerank=True):
     )
     return res.json()
 
+# ========== 统一渲染引用来源函数 ==========
+def render_sources(sources: list):
+    """统一渲染引用来源列表，完全保留原有UI样式，仅修复相似数字段名"""
+    if not sources:
+        return
+    with st.expander("📑 查看引用来源"):
+        for idx, source in enumerate(sources, 1):
+            st.markdown(f"**来源 {idx}**")
+            st.text(source.get("content", "无内容"))
+            st.caption(f"相似度：{source.get('similarity', 0):.4f}")
+            st.divider()
+
 # ========== 页面基础配置 ==========
 st.set_page_config(
     page_title="政务知识库RAG系统",
@@ -198,15 +210,9 @@ with chat_container:
         else:
             with st.chat_message("assistant"):
                 st.markdown(msg["content"])
-                # 展示引用来源
-                if "sources" in msg and msg["sources"]:
-                    with st.expander("📑 查看引用来源"):
-                        for idx, source in enumerate(msg["sources"], 1):
-                            st.markdown(f"**来源 {idx}**")
-                            st.text(source.get("content", "无内容"))
-                            score = source.get("score", 0)
-                            st.caption(f"相似度：{score:.4f}")
-                            st.divider()
+            # 展示引用来源
+            render_sources(msg.get("sources", []))
+
 
 # 底部输入框
 user_input = st.chat_input("请输入您的问题...")
@@ -241,15 +247,8 @@ if st.session_state.chat_history and st.session_state.chat_history[-1]["role"] =
                         st.markdown(answer)
                         
                         # 渲染引用来源
-                        if sources:
-                            with st.expander("📑 查看引用来源"):
-                                for idx, source in enumerate(sources, 1):
-                                    st.markdown(f"**来源 {idx}**")
-                                    st.text(source.get("content", "无内容"))
-                                    score = source.get("score", 0)
-                                    st.caption(f"相似度：{score:.4f}")
-                                    st.divider()
-                        
+                        render_sources(sources)
+                      
                         # 存入历史记录
                         st.session_state.chat_history.append({
                             "role": "assistant",
