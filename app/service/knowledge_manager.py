@@ -6,9 +6,8 @@
 import os
 from app.common.logger import get_logger
 from app.common.exceptions import EmbeddingError, VectorStoreError, KnowledgeNotFoundError, DocumentParseError
-from app.utils.text_cleaner import clean_single_text
 from app.utils.text_splitter import TextSplitter
-from app.utils.format_parser import extract_text
+from app.utils.document_parser import DocumentParser
 
 logger = get_logger(__name__)
 
@@ -74,14 +73,8 @@ class KnowledgeManager:
 
         for file_path in txt_files:
             try:
-                raw_text = extract_text(file_path)
-                if not raw_text:
-                    logger.warning(f"文档解析失败，跳过：{file_path}")
-                    failed_count += 1
-                    failed_details.append({"file": file_path, "reason": "格式解析失败"})
-                    continue
+                clean_text = DocumentParser.parse(file_path)
 
-                clean_text = clean_single_text(raw_text)
                 if not clean_text.strip():
                     logger.info(f"文件 {file_path} 内容为空，跳过入库")
                     success_count += 1
@@ -175,11 +168,8 @@ class KnowledgeManager:
         target_collection = collection_name or self.default_collection
         try:
             # 接入统一格式解析，和批量构建逻辑对齐
-            raw_text = extract_text(file_path)
-            if not raw_text:
-                raise DocumentParseError(f"文档格式不支持或解析失败：{file_path}")
+            clean_text = DocumentParser.parse(file_path)
 
-            clean_text = clean_single_text(raw_text)
             # 空内容前置校验
             if not clean_text.strip():
                 logger.warning(f"文档 {file_path} 内容为空，跳过入库")
