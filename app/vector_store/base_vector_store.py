@@ -60,3 +60,17 @@ class BaseVectorStore(ABC):
             集合内文档数量
         """
         pass
+
+    @abstractmethod
+    def delete_by_ids(
+        self, 
+        ids: List[str], 
+        collection_name: str = None
+    ) -> None:
+        """根据片段ID列表删除指定向量
+
+        Args:
+            ids: 待删除的向量片段ID列表
+            collection_name: 目标知识库集合，不传则使用实例默认集合
+        """
+        pass

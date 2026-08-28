@@ -238,3 +238,36 @@ class ChromaVectorStore(BaseVectorStore):
         except Exception as e:
             logger.error(f"统计文档数失败: {str(e)}")
             raise VectorStoreError(f"统计失败: {str(e)}") from e
+
+    def delete_by_ids(self, ids: list[str], collection_name: str = None) -> None:
+        """根据片段ID列表删除指定向量
+
+        Args:
+            ids: 待删除的向量片段ID列表
+            collection_name: 目标知识库集合，不传则使用实例默认集合
+
+        Raises:
+            VectorStoreError: 集合不存在或删除失败时抛出
+        """
+
+        if not ids:
+            logger.debug("删除向量ID列表为空，跳过操作")
+            return
+
+        target_collection = collection_name or self.collection_name
+
+        if not self.collection_exists(target_collection):
+            raise VectorStoreError(f"知识库集合不存在：{target_collection}")
+
+        try:
+            if target_collection != self.collection_name:
+                collection = self.client.get_collection(name=target_collection)
+            else:
+                collection = self.collection
+
+            collection.delete(ids=ids)
+            logger.info(f"集合[{target_collection}] 成功删除向量片段 {len(ids)} 条")
+
+        except Exception as e:
+            logger.error(f"删除向量片段失败，集合[{target_collection}]，错误：{str(e)}")
+            raise VectorStoreError(f"删除向量片段失败：{str(e)}") from e
