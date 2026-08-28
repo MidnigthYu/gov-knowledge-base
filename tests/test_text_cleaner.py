@@ -6,7 +6,7 @@
 import unittest
 import os
 import tempfile
-from app.utils.text_cleaner import clean_single_text, safe_read_file, batch_clean_files
+from app.utils.text_cleaner import clean_single_text, safe_read_file, batch_clean_files, clean_government_text
 
 
 class TestCleanSingleText(unittest.TestCase):
@@ -85,6 +85,69 @@ class TestBatchCleanFiles(unittest.TestCase):
             self.assertGreater(success, 0)
             self.assertGreaterEqual(failed, 0)
 
+
+class TestGovernmentTextClean(unittest.TestCase):
+    """政务公文清洗专项测试"""
+
+    def setUp(self):
+        """标准红头公文测试样例：包含文号、红头横线、页码、单位+日期落款"""
+        self.standard_gov_doc = """武汉东湖新技术开发区管理委员会文件
+
+武新管〔2024〕8号
+
+───────────────────────
+
+东湖高新区3551人才举荐政策实施办法
+
+第一章 总则
+为深入实施人才强区战略，加快集聚高层次创新创业人才，制定本办法。
+
+第 2 页 共 3 页
+
+第二章 举荐对象与条件
+面向全球范围内的高层次创新创业人才，重点支持光电、生物医药等产业。
+
+武汉东湖新技术开发区管理委员会
+2024年2月20日
+"""
+        # 普通文档：正文包含单位名和日期，验证不误删
+        self.normal_doc = """普通业务说明文档
+第一条 适用范围
+本规则由武汉市财政局负责解释，自2024年3月15日起施行。
+第二条 其他事项
+未尽事宜另行通知。"""
+
+    def test_remove_document_number(self):
+        """测试发文字号被完整删除"""
+        result = clean_government_text(self.standard_gov_doc)
+        self.assertNotIn("武新管〔2024〕8号", result)
+
+    def test_remove_red_line_separator(self):
+        """测试红头分隔横线被完整删除"""
+        result = clean_government_text(self.standard_gov_doc)
+        self.assertNotIn("───────────────────────", result)
+
+    def test_remove_page_number(self):
+        """测试页码行被完整删除"""
+        result = clean_government_text(self.standard_gov_doc)
+        self.assertNotIn("第 2 页 共 3 页", result)
+
+    def test_remove_signature_pair(self):
+        """测试单位+日期落款成对删除"""
+        result = clean_government_text(self.standard_gov_doc)
+        self.assertNotIn("武汉东湖新技术开发区管理委员会\n2024年2月20日", result)
+
+    def test_keep_body_content(self):
+        """测试正文核心内容完整保留，无误删"""
+        result = clean_government_text(self.standard_gov_doc)
+        self.assertIn("第一章 总则", result)
+        self.assertIn("面向全球范围内的高层次创新创业人才", result)
+
+    def test_normal_document_no_side_effect(self):
+        """测试普通文档无副作用：正文内的单位、日期不被误删"""
+        result = clean_government_text(self.normal_doc)
+        self.assertIn("武汉市财政局", result)
+        self.assertIn("2024年3月15日", result)
 
 if __name__ == "__main__":
     unittest.main()
