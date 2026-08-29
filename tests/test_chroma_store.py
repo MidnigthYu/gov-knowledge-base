@@ -1,10 +1,11 @@
 """
 Chroma 向量库单元测试
 验证文档入库计数、检索返回格式、空检索与集合删除等核心行为
-依赖：unittest、ChromaVectorStore
+依赖：unittest、ChromaVectorStore、VectorStoreError
 """
 import unittest
 from app.vector_store import ChromaVectorStore
+from app.common.exceptions import VectorStoreError
 
 class TestChromaStore(unittest.TestCase):
 
@@ -43,6 +44,42 @@ class TestChromaStore(unittest.TestCase):
         self.store.delete_collection()
         new_store = ChromaVectorStore(collection_name="test_unit", persist=False)
         self.assertEqual(new_store.count(), 0)
+
+    def test_delete_by_ids_empty_list(self):
+        """空ID列表调用静默跳过，数据量不变"""
+        texts = ["测试文本1", "测试文本2"]
+        embeddings = [[0.1]*1024, [0.2]*1024]
+        self.store.add_documents(texts, embeddings, metadatas=[{"source": "test"}]*2)
+        original_count = self.store.count()
+
+        self.store.delete_by_ids([])
+        self.assertEqual(self.store.count(), original_count)
+
+    def test_delete_by_ids_existing_ids(self):
+        """删除存在的文档ID，数量正确减少"""
+        doc_ids = ["test_id_1", "test_id_2"]
+        texts = ["文本1", "文本2"]
+        embeddings = [[0.1]*1024, [0.2]*1024]
+        self.store.add_documents(texts, embeddings, metadatas=[{"source": "test"}]*2, ids=doc_ids)
+        self.assertEqual(self.store.count(), 2)
+
+        self.store.delete_by_ids(["test_id_1"])
+        self.assertEqual(self.store.count(), 1)
+
+    def test_delete_by_ids_nonexistent_collection(self):
+        """删除不存在的集合，抛出 VectorStoreError"""
+        with self.assertRaises(VectorStoreError):
+            self.store.delete_by_ids(["any_id"], collection_name="not_exist_collection")
+
+    def test_delete_by_ids_nonexistent_ids(self):
+        """删除不存在的ID，幂等不报错，数据量不变"""
+        texts = ["测试文本"]
+        embeddings = [[0.1]*1024]
+        self.store.add_documents(texts, embeddings, metadatas=[{"source": "test"}])
+        original_count = self.store.count()
+
+        self.store.delete_by_ids(["nonexistent_id"])
+        self.assertEqual(self.store.count(), original_count)
 
 
 if __name__ == "__main__":

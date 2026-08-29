@@ -170,5 +170,18 @@ class TestGovernmentTextClean(unittest.TestCase):
         self.assertIn("国科发火〔2016〕32号", result)
         self.assertIn("根据《高新技术企业认定管理办法》", result)
 
+    def test_chain_clean_inline_wenhao_order(self):
+        """验证链式清洗顺序：政务清洗保留内嵌文号，基础清洗剔除全角括号形成粘连"""
+        text = "根据《高新技术企业认定管理办法》（国科发火〔2016〕32号）执行"
+        
+        gov_result = clean_government_text(text)
+        self.assertIn("国科发火〔2016〕32号", gov_result)
+        
+        full_result = clean_single_text(gov_result)
+        self.assertIn("国科发火201632号", full_result)
+        self.assertNotIn("〔", full_result)
+        self.assertNotIn("〕", full_result)
+
+
 if __name__ == "__main__":
     unittest.main()
