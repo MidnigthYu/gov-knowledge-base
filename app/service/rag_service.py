@@ -179,7 +179,6 @@ class RagService:
             VectorStoreError: 向量检索执行失败时抛出
             LLMAPIError: 大模型生成答案失败时抛出
         """
-        # 获取会话历史
         history = self._get_session_history(session_id)
         # 改写问题，提升检索准确率
         search_query = self._rewrite_query(user_question, history)
@@ -213,7 +212,9 @@ class RagService:
                 collection_name=collection_name
             )
         except Exception as e:
-            logger.error(f"向量检索执行失败, 问题: {user_question}, 错误: {str(e)}")
+            logger.error(f"向量检索执行失败，问题：{user_question}，错误：{str(e)}")
+            if isinstance(e, VectorStoreError):
+                raise
             raise VectorStoreError(f"检索失败: {str(e)}") from e
 
         # 召回结果按内容去重
@@ -257,11 +258,9 @@ class RagService:
             context=context_text
         )
 
-        # 调用大模型生成答案
         try:
             self.llm_client.clear_history()
             self.llm_client.messages[0]["content"] = final_system_prompt
-            # 发送用户问题，获取回答
             answer = self.llm_client.chat(prompt=user_question)
             # 保存本轮对话到会话历史
             self._append_session_history(session_id, user_question, answer)
@@ -338,6 +337,8 @@ class RagService:
             )
         except Exception as e:
             logger.error(f"向量检索执行失败，问题：{user_question}，错误：{str(e)}")
+            if isinstance(e, VectorStoreError):
+                raise
             raise VectorStoreError(f"检索失败：{str(e)}") from e
 
         # 召回结果按内容去重

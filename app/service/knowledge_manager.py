@@ -190,7 +190,7 @@ class KnowledgeManager:
                     continue
                 all_texts.append(chunk_content)
                 all_metadatas.append({
-                    "source_file": file_path,
+                    "source_file": os.path.basename(file_path),
                     "chunk_index": chunk.get("chunk_index", 0),
                     "start_pos": chunk.get("start_pos", 0)
                 })
