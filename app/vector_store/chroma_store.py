@@ -91,10 +91,8 @@ class ChromaVectorStore(BaseVectorStore):
             if metadatas is None:
                 metadatas = [{} for _ in texts]
             enhanced_metadatas = []
-            for idx, meta in enumerate(metadatas):
-                enhanced_meta = {**meta, "chunk_index": idx}
-                if "source" not in enhanced_meta:
-                    enhanced_meta["source"] = "unknown"
+            for meta in metadatas:
+                enhanced_meta = meta.copy()
                 enhanced_metadatas.append(enhanced_meta)
 
             target_collection.add(

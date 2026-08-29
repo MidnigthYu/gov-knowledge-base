@@ -149,5 +149,26 @@ class TestGovernmentTextClean(unittest.TestCase):
         self.assertIn("武汉市财政局", result)
         self.assertIn("2024年3月15日", result)
 
+    def test_remove_prefix_wenhao(self):
+        """测试带前缀的文号行被完整删除"""
+        text = "文号：武财税〔2024〕12号\n第一章 总则\n政策内容"
+        result = clean_government_text(text)
+        self.assertNotIn("文号：", result)
+        self.assertIn("第一章 总则", result)
+
+    def test_remove_red_header_file(self):
+        """测试红头文件抬头行被完整删除"""
+        text = "武汉市财政局文件\n第一章 总则\n政策内容"
+        result = clean_government_text(text)
+        self.assertNotIn("武汉市财政局文件", result)
+        self.assertIn("第一章 总则", result)
+
+    def test_keep_inline_wenhao(self):
+        """测试正文内嵌的引用文号完整保留，不误删"""
+        text = "根据《高新技术企业认定管理办法》（国科发火〔2016〕32号）执行"
+        result = clean_government_text(text)
+        self.assertIn("国科发火〔2016〕32号", result)
+        self.assertIn("根据《高新技术企业认定管理办法》", result)
+
 if __name__ == "__main__":
     unittest.main()

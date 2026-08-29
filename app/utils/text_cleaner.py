@@ -204,6 +204,14 @@ def clean_government_text(text: str) -> str:
         if re.match(r'^印发', stripped):
             continue
 
+        # 带前缀文号行
+        if re.match(r'^文号[:：].*', stripped):
+            continue
+        
+        # 红头文件抬头行
+        if re.match(r'^[\u4e00-\u9fa5]+文件$', stripped):
+            continue
+
         basic_cleaned.append(line)
 
     # 落款块配对删除（仅文末区域执行）
