@@ -71,7 +71,6 @@ async def upload_document(
     # 文件名安全过滤：剥离路径字符，防范路径遍历漏洞
     safe_filename = os.path.basename(file.filename)
 
-    # 初始化临时目录
     temp_dir = Path(settings.UPLOAD_TEMP_DIR)
     temp_dir.mkdir(parents=True, exist_ok=True)
 
