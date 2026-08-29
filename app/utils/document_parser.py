@@ -1,3 +1,7 @@
+"""政务文档统一解析入口
+复用现有格式解析能力，串联政务专项清洗与基础清洗，
+向上层业务提供单文档解析与批量目录解析的统一接口。
+"""
 import os
 from typing import List, Tuple
 from app.utils.format_parser import extract_text

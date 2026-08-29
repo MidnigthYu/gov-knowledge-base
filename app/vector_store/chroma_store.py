@@ -80,7 +80,6 @@ class ChromaVectorStore(BaseVectorStore):
         if len(texts) != len(embeddings):
             raise VectorStoreError("文本数量与向量数量不一致")
 
-        # 动态获取目标集合
         target_name = collection_name if collection_name else self.collection_name
         target_collection = self.client.get_or_create_collection(target_name, metadata={"hnsw:space": "cosine", "app": "gov-rag"})
 
@@ -91,8 +90,10 @@ class ChromaVectorStore(BaseVectorStore):
             if metadatas is None:
                 metadatas = [{} for _ in texts]
             enhanced_metadatas = []
-            for meta in metadatas:
+            for idx, meta in enumerate(metadatas):
                 enhanced_meta = meta.copy()
+                if not enhanced_meta:
+                    enhanced_meta["chunk_index"] = idx
                 enhanced_metadatas.append(enhanced_meta)
 
             target_collection.add(
@@ -137,7 +138,6 @@ class ChromaVectorStore(BaseVectorStore):
         if not self.collection_exists(target_collection_name):
             raise VectorStoreError(f"集合{target_collection_name}不存在")
 
-        # 获取目标集合对象
         if target_collection_name != self.collection_name:
             target_collection = self.client.get_collection(target_collection_name)
         else:

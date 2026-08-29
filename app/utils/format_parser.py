@@ -1,3 +1,8 @@
+"""多格式文档解析模块
+
+提供 PDF、DOCX、TXT、Markdown 四类文档的文本提取能力，
+对外暴露统一入口 extract_text，解析失败统一返回 None。
+"""
 import os
 from typing import Optional
 import pdfplumber
@@ -20,6 +25,7 @@ def extract_text(file_path: str) -> Optional[str]:
 
 
 def _extract_pdf_text(file_path: str) -> Optional[str]:
+    """提取 PDF 全文文本，逐页拼接，解析失败返回 None"""
     try:
         text_list = []
         with pdfplumber.open(file_path) as pdf:
@@ -33,6 +39,7 @@ def _extract_pdf_text(file_path: str) -> Optional[str]:
 
 
 def _extract_docx_text(file_path: str) -> Optional[str]:
+    """提取 DOCX 正文段落与表格文本，解析失败返回 None"""
     try:
         doc = Document(file_path)
         text_list = []
