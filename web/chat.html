@@ -262,7 +262,7 @@
                         question: question,
                         collection_name: DEFAULT_COLLECTION,
                         session_id: sessionId,
-                        similarity_threshold: 0
+                        // similarity_threshold: 0.5
                     })
                 });
 
@@ -325,6 +325,11 @@
 
                             else if (msg.type === 'sources') {
                                 window.currentSources = msg.data;
+                                const SHOW_THRESHOLD = 0.5;
+                                window.currentSources = window.currentSources.filter(item => {
+                                    const sim = item.similarity || 0;
+                                    return sim >= SHOW_THRESHOLD;
+                                });
                             }
                         } catch (e) {
                             console.error('流事件解析失败:', e, jsonStr);
