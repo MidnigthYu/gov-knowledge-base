@@ -118,6 +118,49 @@ class RagService:
                 unique_docs.append(doc)
         return unique_docs
 
+    def _generate_fallback(self, user_question: str) -> str:
+        """零召回场景生成友好兜底回复
+
+        混合策略：问候/天气高频场景走固定模板，其余场景走大模型无状态生成。
+        全程使用 complete 独立调用，不污染主对话历史。
+        """
+        question_lower = user_question.strip().lower()
+
+        # 固定模板 - 问候类
+        greet_keywords = ["你好", "您好", "在吗", "嗨", "hello", "hi"]
+        if any(kw in question_lower for kw in greet_keywords):
+            return "您好，这里是政务政策知识库助手。您可以咨询企业补贴、人才政策、办事流程等问题，我会基于政策文档为您解答。"
+
+        # 固定模板 - 天气类
+        weather_keywords = ["天气", "气温", "下雨", "温度", "降雪", "刮风"]
+        if any(kw in question_lower for kw in weather_keywords):
+            return "抱歉，暂无与该问题相关的政策信息。关于天气情况，建议您咨询专业气象服务或当地天气预报。"
+
+        # 大模型兜底 - 其他无关场景
+        try:
+            system_prompt = """你是政务知识库智能助手。用户的问题不在当前政策知识库范围内。
+请严格按照以下要求回答：
+1. 首先明确说明：暂无与该问题相关的政策信息；
+2. 结合用户的问题，给出合理的官方引导建议；
+3. 语气正式、严谨，符合政务服务风格，不得编造任何政策内容；
+4. 回答简洁，控制在两句话以内。"""
+
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_question}
+            ]
+            fallback_answer = self.llm_client.complete(messages).strip()
+
+            # 空串降级：大模型返回空内容时走通用模板
+            if not fallback_answer:
+                return "抱歉，暂无与该问题相关的政策信息，您可以尝试调整关键词后重新提问，或咨询对应政务服务窗口。"
+
+            return fallback_answer
+
+        except Exception:
+            # 调用异常降级，保证接口稳定
+            return "抱歉，暂无与该问题相关的政策信息，您可以尝试调整关键词后重新提问，或咨询对应政务服务窗口。"
+
     def _rewrite_query(self, current_question: str, history: List[Dict[str, str]]) -> str:
         """结合对话历史改写用户问题，补全省略的指代信息，用于提升检索准确率"""
         if not history:
@@ -221,7 +264,7 @@ class RagService:
         filtered_results = self._dedup_docs(search_results)
 
         if not filtered_results:
-            empty_answer = "抱歉，暂无与该问题相关的政策信息。"
+            empty_answer = self._generate_fallback(user_question)
             logger.info(f"问题[{user_question}]未检索到任何匹配片段")
             # 空结果也保存历史，与流式行为对齐，保证多轮上下文连续
             self._append_session_history(session_id, user_question, empty_answer)
@@ -423,9 +466,9 @@ class RagService:
             yield {"type": "done", "data": {}}
             return
 
-        # 零召回兜底：无匹配片段直接返回提示，不调用大模型
+        # 零召回兜底：无匹配片段返回友好引导，不调用主流程大模型
         if not filtered_results:
-            empty_answer = "抱歉，未检索到与您问题相关的政策内容，请调整提问关键词后重试。"
+            empty_answer = self._generate_fallback(user_question)
             logger.info(f"流式问答零召回，问题: {user_question}")
             yield {"type": "content", "data": empty_answer}
             yield {"type": "sources", "data": []}
