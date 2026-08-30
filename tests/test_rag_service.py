@@ -28,18 +28,20 @@ class TestRagService(unittest.TestCase):
         self.rag_service.reranker = self.mock_reranker
 
     def test_empty_search_return_default_answer(self):
-        """检索无结果时，返回兜底提示，且不调用大模型"""
-        # 模拟向量化成功
+        """检索无结果时，返回兜底提示，不调用对话式 chat，改用无状态 complete 兜底"""
         self.mock_embedding.embed.return_value = [0.1] * 1024
         # 模拟检索返回空
         self.mock_vector_store.search.return_value = []
+        # 兜底走无状态 complete 接口，mock 返回标准兜底文案
+        self.mock_llm_client.complete.return_value = "抱歉，暂无与该问题相关的政策信息。"
 
         result = self.rag_service.query("测试问题")
         self.assertEqual(result["hit_count"], 0)
         self.assertEqual(len(result["sources"]), 0)
         self.assertIn("暂无", result["answer"])
-        # 验证未调用大模型
+        # 验证未调用有状态 chat，兜底调用的是无状态 complete
         self.mock_llm_client.chat.assert_not_called()
+        self.mock_llm_client.complete.assert_called_once()
 
     def test_normal_query_return_structured_result(self):
         """正常检索时，返回结构化答案与来源片段"""
@@ -145,6 +147,8 @@ class TestRagService(unittest.TestCase):
         self.mock_embedding.embed.return_value = [0.1] * 1024
         # 模拟向量检索返回空
         self.mock_vector_store.search.return_value = []
+        # 零召回兜底走 complete 接口，mock 标准兜底文案
+        self.mock_llm_client.complete.return_value = "抱歉，暂无与该问题相关的政策信息。"
 
         result = self.rag_service.query("测试问题", enable_rerank=True, rerank_top_n=3)
 
@@ -153,6 +157,36 @@ class TestRagService(unittest.TestCase):
         # 断言：返回兜底答案，命中数为0
         self.assertEqual(result["hit_count"], 0)
         self.assertIn("暂无", result["answer"])
+
+    def test_greeting_fallback_template(self):
+        """零召回-问候类问题命中固定模板，不调用大模型"""
+        self.mock_embedding.embed.return_value = [0.1] * 1024
+        self.mock_vector_store.search.return_value = []
+
+        result = self.rag_service.query("你好")
+
+        self.assertEqual(result["hit_count"], 0)
+        self.assertEqual(len(result["sources"]), 0)
+        self.assertIn("您好", result["answer"])
+        self.assertIn("政务", result["answer"])
+        # 验证：走模板分支，未调用大模型
+        self.mock_llm_client.complete.assert_not_called()
+        self.mock_llm_client.chat.assert_not_called()
+
+    def test_fallback_llm_error_degrade(self):
+        """零召回-大模型兜底异常时，自动降级为通用模板，接口稳定"""
+        self.mock_embedding.embed.return_value = [0.1] * 1024
+        self.mock_vector_store.search.return_value = []
+        # 模拟大模型调用异常
+        self.mock_llm_client.complete.side_effect = Exception("大模型调用超时")
+
+        result = self.rag_service.query("帮我写首诗")
+
+        self.assertEqual(result["hit_count"], 0)
+        self.assertEqual(len(result["sources"]), 0)
+        self.assertIn("暂无", result["answer"])
+        # 验证：异常被捕获，接口正常返回
+        self.mock_llm_client.complete.assert_called_once()
 
 if __name__ == "__main__":
     unittest.main()
